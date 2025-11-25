@@ -1,4 +1,5 @@
 
+
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -458,6 +459,28 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+            // --- 0. Initialize from URL Params (Database Sync) ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const startVal = urlParams.get('start_val');
+            
+            if (startVal) {
+                const numericStart = parseInt(startVal);
+                if (!isNaN(numericStart)) {
+                    if (input) input.value = numericStart;
+                    if (display) display.innerText = numericStart;
+                    
+                    // Trigger visual update immediately
+                    // We call the logic manually to ensure wave height is set before user interacts
+                    let percentage = Math.min((numericStart / 4000), 1);
+                    let bottomPos = -410 + (400 * percentage);
+                    
+                    const wb = document.getElementById('waveBack');
+                    const wf = document.getElementById('waveFront');
+                    
+                    if(wb) wb.style.bottom = `${bottomPos}px`;
+                    if(wf) wf.style.bottom = `${bottomPos}px`;
+                }
+            }
 
             // Get Elements
             const input = document.getElementById('intakeInput');
