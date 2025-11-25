@@ -374,11 +374,9 @@
 
     <div class="glass-card">
         <div class="input-wrapper">
-            <!-- Input field with onkeyup to ensure indicator updates immediately on mobile -->
-            <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric" onkeyup="updateVisuals(this.value)" onchange="updateVisuals(this.value)">
-            
+            <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
-            <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer;">−</button>
+            <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
         </div>
 
         <!-- Deadline Info Section -->
@@ -452,140 +450,139 @@
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        // Ensure code runs only after HTML is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
 
-        const input = document.getElementById('intakeInput');
-        const display = document.getElementById('displayVal');
-        const waveBack = document.getElementById('waveBack');
-        const waveFront = document.getElementById('waveFront');
+            // Get Elements
+            const input = document.getElementById('intakeInput');
+            const display = document.getElementById('displayVal');
+            const waveBack = document.getElementById('waveBack');
+            const waveFront = document.getElementById('waveFront');
 
-        // --- 1. Visual Indicator Logic (Centralized) ---
-        function updateVisuals(value) {
-            let numericVal = parseInt(value);
-            if (isNaN(numericVal) || numericVal < 0) numericVal = 0;
-            
-            // Update the Big Number
-            display.innerText = numericVal;
-            
-            // Update the Wave Height
-            // 4000ml is considered "Full" (100%) for animation purposes
-            let percentage = Math.min((numericVal / 4000), 1);
-            
-            // -410px is empty, -10px is full
-            let bottomPos = -410 + (400 * percentage);
-            
-            waveBack.style.bottom = `${bottomPos}px`;
-            waveFront.style.bottom = `${bottomPos}px`;
-        }
-
-        // Initialize on load
-        updateVisuals(input.value);
-
-        // --- 2. Custom Remove Functionality ---
-        function removeCustomAmount() {
-            tg.HapticFeedback.impactOccurred('medium');
-            
-            let currentVal = parseInt(input.value);
-            if (isNaN(currentVal)) currentVal = 0;
-
-            if (currentVal <= 0) {
-                tg.showPopup({ title: 'Empty', message: 'Current amount is already 0.' });
-                return;
+            // --- 1. Visual Indicator Logic ---
+            function updateVisuals(value) {
+                let numericVal = parseInt(value);
+                
+                // Safety check: treat empty or invalid as 0
+                if (isNaN(numericVal) || numericVal < 0) numericVal = 0;
+                
+                // Update the Big Number
+                if(display) display.innerText = numericVal;
+                
+                // Update Wave Height (4000ml = 100%)
+                let percentage = Math.min((numericVal / 4000), 1);
+                let bottomPos = -410 + (400 * percentage); // -410px is hidden, -10px is full
+                
+                if(waveBack) waveBack.style.bottom = `${bottomPos}px`;
+                if(waveFront) waveFront.style.bottom = `${bottomPos}px`;
             }
 
-            // Ask user for amount to subtract
-            tg.showPopup({
-                title: 'Remove Water',
-                message: 'Choose amount to subtract:',
-                buttons: [
-                    {id: '100', type: 'default', text: '-100 ml'},
-                    {id: '250', type: 'default', text: '-250 ml'},
-                    {id: 'custom', type: 'destructive', text: 'Custom Amount'},
-                    {id: 'cancel', type: 'cancel'}
-                ]
-            }, (btnId) => {
-                if (!btnId || btnId === 'cancel') return;
+            // --- 2. Event Listeners (The Fix) ---
+            // Listen for multiple event types to catch typing, pasting, and autofill
+            if (input) {
+                ['input', 'change', 'keyup', 'paste'].forEach(evt => 
+                    input.addEventListener(evt, function() {
+                        updateVisuals(input.value);
+                    })
+                );
+                // Initialize on load
+                updateVisuals(input.value);
+            }
 
-                let subtractAmount = 0;
+            // --- 3. Custom Remove Functionality ---
+            window.removeCustomAmount = function() {
+                tg.HapticFeedback.impactOccurred('medium');
+                
+                let currentVal = parseInt(input.value);
+                if (isNaN(currentVal)) currentVal = 0;
 
-                if (btnId === 'custom') {
-                    // Use JS prompt for custom input
-                    let userResponse = prompt("Enter ML to remove:");
-                    let parsed = parseInt(userResponse);
-                    if (!isNaN(parsed) && parsed > 0) {
-                        subtractAmount = parsed;
-                    } else if (userResponse) {
-                        alert("Invalid number entered.");
-                    }
-                } else {
-                    subtractAmount = parseInt(btnId);
+                if (currentVal <= 0) {
+                    tg.showPopup({ title: 'Empty', message: 'Current amount is already 0.' });
+                    return;
                 }
 
-                if (subtractAmount > 0) {
-                    let newVal = Math.max(0, currentVal - subtractAmount);
-                    input.value = newVal;
-                    updateVisuals(newVal); // Update indicator immediately
-                    tg.HapticFeedback.notificationOccurred('success');
-                }
-            });
-        }
-
-        // --- 3. Submit Data Logic (Fixed for Menu Button) ---
-        function submitData(mode) {
-            const rawVal = document.getElementById('intakeInput').value;
-            const val = parseInt(rawVal);
-            
-            if (isNaN(val) || val <= 0) {
-                tg.HapticFeedback.notificationOccurred('error');
                 tg.showPopup({
-                    title: 'Missing Data',
-                    message: 'Please enter a valid water intake amount (e.g., 2500).'
+                    title: 'Remove Water',
+                    message: 'Select amount to subtract:',
+                    buttons: [
+                        {id: '100', type: 'default', text: '-100 ml'},
+                        {id: '250', type: 'default', text: '-250 ml'},
+                        {id: 'custom', type: 'destructive', text: 'Custom Amount'},
+                        {id: 'cancel', type: 'cancel'}
+                    ]
+                }, (btnId) => {
+                    if (!btnId || btnId === 'cancel') return;
+
+                    let subtractAmount = 0;
+
+                    if (btnId === 'custom') {
+                        let userResponse = prompt("Enter ML to remove (e.g., 50):");
+                        let parsed = parseInt(userResponse);
+                        if (!isNaN(parsed) && parsed > 0) {
+                            subtractAmount = parsed;
+                        }
+                    } else {
+                        subtractAmount = parseInt(btnId);
+                    }
+
+                    if (subtractAmount > 0) {
+                        let newVal = Math.max(0, currentVal - subtractAmount);
+                        input.value = newVal;
+                        updateVisuals(newVal); // Force visual update immediately
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
                 });
-                return;
-            }
-
-            tg.HapticFeedback.notificationOccurred('success');
-
-            let actionKey = (mode === 'update') ? "hydration_update_only" : "hydration_generate_now";
-
-            const payload = {
-                action: actionKey,
-                intake_ml: val,
-                config: {
-                    bitanu: document.getElementById('tgBit').checked,
-                    shreya: document.getElementById('tgShr').checked,
-                    comparison: document.getElementById('tgComp').checked,
-                    ai: document.getElementById('tgAI').checked
-                }
             };
 
-            // SEND DATA
-            const dataString = JSON.stringify(payload);
-            tg.sendData(dataString);
-            
-            // 🔥 CRITICAL FIX: 
-            // When opened via Menu Button, sendData is asynchronous. 
-            // We MUST wait slightly before closing, or the data is lost.
-            // Increased delay to 500ms to ensure transmission on mobile networks.
-            setTimeout(() => {
-                tg.close();
-            }, 500);
-        }
+            // --- 4. Submit Data Logic ---
+            window.submitData = function(mode) {
+                const rawVal = input.value;
+                const val = parseInt(rawVal);
+                
+                if (isNaN(val)) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                    tg.showPopup({ title: 'Error', message: 'Please enter a valid number.' });
+                    return;
+                }
 
-        function triggerAction(actionType) {
-            tg.HapticFeedback.impactOccurred('light');
-            const payload = { action: actionType };
-            tg.sendData(JSON.stringify(payload));
-            
-            // Delay close for these buttons too
-            setTimeout(() => {
-                tg.close();
-            }, 500);
-        }
+                tg.HapticFeedback.notificationOccurred('success');
+
+                let actionKey = (mode === 'update') ? "hydration_update_only" : "hydration_generate_now";
+
+                const payload = {
+                    action: actionKey,
+                    intake_ml: val,
+                    config: {
+                        bitanu: document.getElementById('tgBit') ? document.getElementById('tgBit').checked : true,
+                        shreya: document.getElementById('tgShr') ? document.getElementById('tgShr').checked : true,
+                        comparison: document.getElementById('tgComp') ? document.getElementById('tgComp').checked : true,
+                        ai: document.getElementById('tgAI') ? document.getElementById('tgAI').checked : true
+                    }
+                };
+
+                tg.sendData(JSON.stringify(payload));
+                
+                // Wait slightly for data transmission before closing
+                setTimeout(() => {
+                    tg.close();
+                }, 500);
+            };
+
+            // --- 5. Trigger Action (Help/Scripts) ---
+            window.triggerAction = function(actionType) {
+                tg.HapticFeedback.impactOccurred('light');
+                tg.sendData(JSON.stringify({ action: actionType }));
+                setTimeout(() => { tg.close(); }, 500);
+            };
+        });
     </script>
+    
 </body>
 </html>
 
