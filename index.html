@@ -20,7 +20,14 @@
             --glass-border: rgba(255, 255, 255, 0.08);
             --btn-update-bg: rgba(51, 65, 85, 0.8);
         }
-
+        
+        /* --- NEW: Global Tap Highlight Removal --- */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none; /* Prevents long-press menu on some elements */
+            outline: none; /* Removes focus ring */
+        }
+        
         body {
             background-color: var(--bg-color);
             background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 70%);
@@ -121,6 +128,32 @@
 
         .input-wrapper {
             position: relative;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* --- NEW: Undo Button Style --- */
+        .btn-remove {
+            background: rgba(239, 68, 68, 0.2); /* Red tint */
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            width: 50px;
+            height: 56px; /* Match input height */
+            border-radius: 16px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-remove:active {
+            background: rgba(239, 68, 68, 0.4);
+            transform: scale(0.95);
         }
 
         input[type="number"] {
@@ -342,6 +375,8 @@
     <div class="glass-card">
         <div class="input-wrapper">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
+
+            <button class="btn-remove" onclick="removeCustomAmount()" title="Subtract Amount">−</button>
         </div>
 
         <!-- Deadline Info Section -->
@@ -411,29 +446,91 @@
         <button class="btn-close" onclick="tg.close()">Close</button>
     </div>
 
+    <!-- UPDATED: Use a newer API version to ensure Menu Button compatibility -->
+    <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        // Ensure the app is ready
-        tg.ready();
+        tg.ready(); // Explicitly signal ready state
 
         const input = document.getElementById('intakeInput');
         const display = document.getElementById('displayVal');
         const waveBack = document.getElementById('waveBack');
         const waveFront = document.getElementById('waveFront');
 
-        // Animation Logic
-        input.addEventListener('input', (e) => {
-            let val = parseInt(e.target.value) || 0;
-            display.innerText = val;
+        // --- CORE: Visual Indicator Logic ---
+        function updateVisuals(value) {
+            // Handle NaN or empty strings gracefully
+            let numericVal = parseInt(value);
+            if (isNaN(numericVal)) numericVal = 0;
             
-            let percentage = Math.min((val / 4000), 1);
+            // Update Text
+            display.innerText = numericVal;
+            
+            // Calculate percentage (capped at 100% / 4000ml)
+            let percentage = Math.min((numericVal / 4000), 1);
+            
+            // Wave animation calculation
+            // -410px is completely hidden. -10px is completely full.
             let bottomPos = -410 + (400 * percentage);
             
             waveBack.style.bottom = `${bottomPos}px`;
             waveFront.style.bottom = `${bottomPos}px`;
-        });
+        }
 
+        // --- EVENT LISTENER: Live Updates ---
+        input.addEventListener('input', (e) => {
+            updateVisuals(e.target.value);
+        });
+        
+        // Initialize visuals on load (in case browser autofills)
+        updateVisuals(input.value);
+
+        // --- NEW: Custom Remove Functionality ---
+        function removeCustomAmount() {
+            tg.HapticFeedback.impactOccurred('light');
+            
+            // 1. Get current value
+            let currentVal = parseInt(input.value);
+            if (isNaN(currentVal)) currentVal = 0;
+
+            if (currentVal <= 0) {
+                tg.showPopup({ title: 'Empty', message: 'Nothing to remove!' });
+                return;
+            }
+
+            // 2. Prompt user for amount using Telegram Native Popup if available, else standard
+            tg.showPopup({
+                title: 'Subtract Amount',
+                message: 'Enter amount to remove (ml):',
+                buttons: [
+                    {id: 'cancel', type: 'cancel'},
+                    {id: '100', type: 'default', text: '-100'},
+                    {id: '250', type: 'default', text: '-250'},
+                    {id: 'custom', type: 'destructive', text: 'Custom Input'}
+                ]
+            }, (btnId) => {
+                let subtractAmount = 0;
+                
+                if (btnId === '100') subtractAmount = 100;
+                else if (btnId === '250') subtractAmount = 250;
+                else if (btnId === 'custom') {
+                    // Fallback to JS prompt for custom number as WebApp popup doesn't have input field yet
+                    let rawInput = prompt("Enter amount to remove in ml:");
+                    let parsed = parseInt(rawInput);
+                    if (!isNaN(parsed) && parsed > 0) subtractAmount = parsed;
+                }
+
+                if (subtractAmount > 0) {
+                    let newVal = Math.max(0, currentVal - subtractAmount);
+                    input.value = newVal;
+                    updateVisuals(newVal);
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            });
+        }
+
+        // --- MAIN: Submit Data Logic ---
         function submitData(mode) {
             const rawVal = document.getElementById('intakeInput').value;
             const val = parseInt(rawVal);
@@ -467,16 +564,26 @@
                 }
             };
 
-            // Send data and close the WebApp
-            tg.sendData(JSON.stringify(payload));
-            // Optional: Close explicitly if sendData doesn't trigger it automatically in some environments
-            // tg.close(); 
+            // Force stringify to ensure formatting
+            const dataString = JSON.stringify(payload);
+            
+            // Send data
+            tg.sendData(dataString);
+            
+            // CRITICAL FIX: Close app explicitly after a short delay to ensure data transmits
+            // This helps when opened via Menu Button
+            setTimeout(() => {
+                tg.close();
+            }, 100);
         }
 
         function triggerAction(actionType) {
             tg.HapticFeedback.impactOccurred('medium');
             const payload = { action: actionType };
             tg.sendData(JSON.stringify(payload));
+            setTimeout(() => {
+                tg.close();
+            }, 100);
         }
     </script>
 </body>
