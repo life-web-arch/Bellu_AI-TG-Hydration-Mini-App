@@ -1,5 +1,4 @@
 
-
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -459,28 +458,6 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
-            // --- 0. Initialize from URL Params (Database Sync) ---
-            const urlParams = new URLSearchParams(window.location.search);
-            const startVal = urlParams.get('start_val');
-            
-            if (startVal) {
-                const numericStart = parseInt(startVal);
-                if (!isNaN(numericStart)) {
-                    if (input) input.value = numericStart;
-                    if (display) display.innerText = numericStart;
-                    
-                    // Trigger visual update immediately
-                    // We call the logic manually to ensure wave height is set before user interacts
-                    let percentage = Math.min((numericStart / 4000), 1);
-                    let bottomPos = -410 + (400 * percentage);
-                    
-                    const wb = document.getElementById('waveBack');
-                    const wf = document.getElementById('waveFront');
-                    
-                    if(wb) wb.style.bottom = `${bottomPos}px`;
-                    if(wf) wf.style.bottom = `${bottomPos}px`;
-                }
-            }
 
             // Get Elements
             const input = document.getElementById('intakeInput');
@@ -506,16 +483,36 @@
                 if(waveFront) waveFront.style.bottom = `${bottomPos}px`;
             }
 
-            // --- 2. Event Listeners (The Fix) ---
-            // Listen for multiple event types to catch typing, pasting, and autofill
+            // --- 2. MODIFIED Event Listeners and Initial State ---
             if (input) {
+                // Add event listeners for real-time updates
                 ['input', 'change', 'keyup', 'paste'].forEach(evt => 
                     input.addEventListener(evt, function() {
                         updateVisuals(input.value);
                     })
                 );
-                // Initialize on load
-                updateVisuals(input.value);
+                
+                // --- MODIFICATION START: Read initial data from URL ---
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const initialIntake = urlParams.get('intake');
+                    const numericIntake = parseInt(initialIntake);
+
+                    if (!isNaN(numericIntake) && numericIntake > 0) {
+                        // Set the input field's value
+                        input.value = numericIntake;
+                        // Trigger the visual update with the fetched value
+                        updateVisuals(numericIntake);
+                    } else {
+                        // If no valid parameter, initialize to 0
+                        updateVisuals(0);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse initial data:", e);
+                    // Fallback to 0 if any error occurs
+                    updateVisuals(0);
+                }
+                // --- MODIFICATION END ---
             }
 
             // --- 3. Custom Remove Functionality ---
