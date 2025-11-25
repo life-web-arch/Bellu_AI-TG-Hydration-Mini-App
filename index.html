@@ -1,3 +1,6 @@
+
+<!--Bellu AI TG_Hydration_miniappTG.html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -411,7 +414,8 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.enableClosingConfirmation();
+        // Ensure the app is ready
+        tg.ready();
 
         const input = document.getElementById('intakeInput');
         const display = document.getElementById('displayVal');
@@ -423,11 +427,7 @@
             let val = parseInt(e.target.value) || 0;
             display.innerText = val;
             
-            // Calculate percentage (capped at 100%)
-            // Assuming 4000ml is full for visualization
             let percentage = Math.min((val / 4000), 1);
-            
-            // Calculate bottom position (-410px is hidden/empty, -10px is full)
             let bottomPos = -410 + (400 * percentage);
             
             waveBack.style.bottom = `${bottomPos}px`;
@@ -435,9 +435,10 @@
         });
 
         function submitData(mode) {
-            const val = document.getElementById('intakeInput').value;
+            const rawVal = document.getElementById('intakeInput').value;
+            const val = parseInt(rawVal);
             
-            if (!val || val <= 0) {
+            if (isNaN(val) || val <= 0) {
                 tg.HapticFeedback.notificationOccurred('error');
                 tg.showPopup({
                     title: 'Missing Data',
@@ -448,7 +449,6 @@
 
             tg.HapticFeedback.notificationOccurred('success');
 
-            // Determine action key based on button clicked
             let actionKey = "";
             if (mode === 'update') {
                 actionKey = "hydration_update_only";
@@ -456,10 +456,9 @@
                 actionKey = "hydration_generate_now";
             }
 
-            // Construct Payload with specific toggles
             const payload = {
                 action: actionKey,
-                intake_ml: parseInt(val),
+                intake_ml: val,
                 config: {
                     bitanu: document.getElementById('tgBit').checked,
                     shreya: document.getElementById('tgShr').checked,
@@ -468,7 +467,10 @@
                 }
             };
 
+            // Send data and close the WebApp
             tg.sendData(JSON.stringify(payload));
+            // Optional: Close explicitly if sendData doesn't trigger it automatically in some environments
+            // tg.close(); 
         }
 
         function triggerAction(actionType) {
@@ -479,3 +481,5 @@
     </script>
 </body>
 </html>
+
+
