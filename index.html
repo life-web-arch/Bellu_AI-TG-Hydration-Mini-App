@@ -373,7 +373,7 @@
     </div>
 
     <div class="glass-card">
-        <div class="input-wrapper" id="input-container">
+        <div class="input-wrapper">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
             <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
@@ -424,7 +424,7 @@
         </div>
 
         <!-- Dual Buttons -->
-        <div class="action-grid" id="edit-mode-actions">
+        <div class="action-grid">
             <button class="btn-update" onclick="submitData('update')">
                 💾 Update Only
             </button>
@@ -432,16 +432,6 @@
                 🚀 Generate Now
             </button>
         </div>
-
-        <div class="action-grid" id="saved-mode-actions" style="display: none;">
-            <button class="btn-update" onclick="showEditState()">
-                ✏️ Edit Amount
-            </button>
-            <button class="btn-primary" onclick="submitData('generate')">
-                📊 Generate Report
-            </button>
-        </div>
-        <!-- ================================================= -->
 
         <div class="section-header">
             <span>Actions</span>
@@ -462,6 +452,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
@@ -473,43 +464,58 @@
             const display = document.getElementById('displayVal');
             const waveBack = document.getElementById('waveBack');
             const waveFront = document.getElementById('waveFront');
-            
-            // Get Container Elements
-            const inputContainer = document.getElementById('input-container');
-            const editModeActions = document.getElementById('edit-mode-actions');
-            const savedModeActions = document.getElementById('saved-mode-actions');
 
-            // --- Visual Indicator Logic ---
+            // --- NEW: Global state for cumulative total ---
+            let currentTotal = 0;
+
+            // --- 1. Visual Indicator Logic ---
+            // This function now ONLY updates visuals based on a given value.
             function updateVisuals(value) {
                 let numericVal = parseInt(value);
                 if (isNaN(numericVal) || numericVal < 0) numericVal = 0;
+
                 if(display) display.innerText = numericVal;
-                
+
                 let percentage = Math.min((numericVal / 4000), 1);
                 let bottomPos = -410 + (400 * percentage);
-                
+
                 if(waveBack) waveBack.style.bottom = `${bottomPos}px`;
                 if(waveFront) waveFront.style.bottom = `${bottomPos}px`;
             }
-
-            // --- Initial State and Event Listeners ---
-            if (input) {
-                ['input', 'change', 'keyup', 'paste'].forEach(evt => 
-                    input.addEventListener(evt, function() {
-                        updateVisuals(input.value);
-                    })
-                );
+            
+            // --- 2. Input Field Logic (MODIFIED for "Adder" model) ---
+            function handleInput() {
+                // The value to be added from the input field.
+                const amountToAdd = parseInt(input.value) || 0; 
                 
+                // The new total to display is the current saved total plus what's in the input.
+                const newDisplayTotal = currentTotal + amountToAdd;
+                
+                // Update the visuals in real-time as the user types.
+                updateVisuals(newDisplayTotal);
+            }
+
+            // --- 3. Event Listeners and Initial State ---
+            if (input) {
+                // The input placeholder now reflects its new purpose.
+                input.placeholder = "Enter amount to ADD (e.g. 250)";
+
+                ['input', 'change', 'keyup', 'paste'].forEach(evt => 
+                    input.addEventListener(evt, handleInput)
+                );
+
+                // Read initial total from URL parameter.
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     const initialIntake = urlParams.get('intake');
                     const numericIntake = parseInt(initialIntake);
 
-                    if (!isNaN(numericIntake) && numericIntake >= 0) { // Allow 0
-                        input.value = numericIntake;
-                        updateVisuals(numericIntake);
+                    if (!isNaN(numericIntake) && numericIntake >= 0) {
+                        // Set the global state and update visuals.
+                        currentTotal = numericIntake;
+                        updateVisuals(currentTotal);
                     } else {
-                        updateVisuals(0);
+                        updateVisuals(0); // Default to 0 if no valid data.
                     }
                 } catch (e) {
                     console.error("Failed to parse initial data:", e);
@@ -517,34 +523,19 @@
                 }
             }
 
-            // --- NEW: UI State Management Functions ---
-            window.showSavedState = function() {
-                tg.HapticFeedback.notificationOccurred('success');
-                if(inputContainer) inputContainer.style.display = 'none';
-                if(editModeActions) editModeActions.style.display = 'none';
-                if(savedModeActions) savedModeActions.style.display = 'grid'; // Use grid to match original layout
-            };
-
-            window.showEditState = function() {
-                tg.HapticFeedback.impactOccurred('light');
-                if(inputContainer) inputContainer.style.display = 'flex'; // Use flex for input layout
-                if(editModeActions) editModeActions.style.display = 'grid';
-                if(savedModeActions) savedModeActions.style.display = 'none';
-            };
-
-
-            // --- Custom Remove Functionality (Unchanged) ---
+            // --- 4. Custom Remove Functionality (MODIFIED) ---
+            // This function now subtracts from the current total.
             window.removeCustomAmount = function() {
                 tg.HapticFeedback.impactOccurred('medium');
-                let currentVal = parseInt(input.value);
-                if (isNaN(currentVal)) currentVal = 0;
-                if (currentVal <= 0) {
-                    tg.showPopup({ title: 'Empty', message: 'Current amount is already 0.' });
+
+                if (currentTotal <= 0) {
+                    tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
                     return;
                 }
+
                 tg.showPopup({
-                    title: 'Remove Water',
-                    message: 'Select amount to subtract:',
+                    title: 'Subtract from Total',
+                    message: `Current Total: ${currentTotal} ml. Select amount to subtract:`,
                     buttons: [
                         {id: '100', type: 'default', text: '-100 ml'},
                         {id: '250', type: 'default', text: '-250 ml'},
@@ -555,36 +546,47 @@
                     if (!btnId || btnId === 'cancel') return;
                     let subtractAmount = 0;
                     if (btnId === 'custom') {
-                        let userResponse = prompt("Enter ML to remove (e.g., 50):");
+                        let userResponse = prompt("Enter ML to subtract from total:");
                         let parsed = parseInt(userResponse);
-                        if (!isNaN(parsed) && parsed > 0) {
-                            subtractAmount = parsed;
-                        }
+                        if (!isNaN(parsed) && parsed > 0) subtractAmount = parsed;
                     } else {
                         subtractAmount = parseInt(btnId);
                     }
+
                     if (subtractAmount > 0) {
-                        let newVal = Math.max(0, currentVal - subtractAmount);
-                        input.value = newVal;
-                        updateVisuals(newVal);
+                        currentTotal = Math.max(0, currentTotal - subtractAmount);
+                        input.value = ''; // Clear the input field
+                        updateVisuals(currentTotal); // Update visuals to new total
                         tg.HapticFeedback.notificationOccurred('success');
+                        
+                        // Also send an update to the bot immediately.
+                        submitData('update', true); // 'true' indicates this is a removal action
                     }
                 });
             };
 
-            // --- MODIFIED: Submit Data Logic ---
-            window.submitData = function(mode) {
-                const rawVal = input.value;
-                const val = parseInt(rawVal);
-                
-                if (isNaN(val) || val < 0) {
+            // --- 5. Submit Data Logic (MODIFIED) ---
+            window.submitData = function(mode, isRemoval = false) {
+                const amountToAdd = parseInt(input.value) || 0;
+
+                // On removal, amountToAdd is 0, so newTotal is just the updated currentTotal.
+                // Otherwise, it's the sum.
+                const newTotal = currentTotal + amountToAdd;
+
+                // Do not allow submitting if nothing was added (unless it's a removal action).
+                if (amountToAdd <= 0 && !isRemoval) {
                     tg.HapticFeedback.notificationOccurred('error');
-                    tg.showPopup({ title: 'Error', message: 'Please enter a valid, non-negative number.' });
+                    tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
                     return;
                 }
 
+                tg.HapticFeedback.notificationOccurred('success');
+
+                let actionKey = (mode === 'update') ? "hydration_update_only" : "hydration_generate_now";
+
                 const payload = {
-                    intake_ml: val,
+                    action: actionKey,
+                    intake_ml: newTotal, // Send the NEW CUMULATIVE total.
                     config: {
                         bitanu: document.getElementById('tgBit').checked,
                         shreya: document.getElementById('tgShr').checked,
@@ -593,23 +595,28 @@
                     }
                 };
 
-                // --- Logic Branching ---
+                tg.sendData(JSON.stringify(payload));
+                
+                // --- BEHAVIOR CHANGE ---
                 if (mode === 'update') {
-                    payload.action = "hydration_update_only";
-                    tg.sendData(JSON.stringify(payload));
-                    // Instead of closing, switch to the saved UI state
-                    showSavedState(); 
-                } else if (mode === 'generate') {
-                    payload.action = "hydration_generate_now";
-                    tg.sendData(JSON.stringify(payload));
-                    // Wait slightly for data transmission before closing
+                    // For "Update Only", we DON'T close the app.
+                    // We update the state and clear the input field for the next entry.
+                    currentTotal = newTotal;
+                    input.value = ''; // Clear input
+                    updateVisuals(currentTotal); // Visuals already reflect this, but good practice.
+                    
+                    // Show a subtle confirmation.
+                    tg.showPopup({ title: 'Updated!', message: `New total is ${currentTotal} ml.` });
+
+                } else {
+                    // For "Generate Now", we close the app as before.
                     setTimeout(() => {
                         tg.close();
                     }, 500);
                 }
             };
 
-            // --- Trigger Action (Help/Scripts) ---
+            // --- 6. Trigger Action (Help/Scripts) --- (Unchanged)
             window.triggerAction = function(actionType) {
                 tg.HapticFeedback.impactOccurred('light');
                 tg.sendData(JSON.stringify({ action: actionType }));
@@ -617,8 +624,6 @@
             };
         });
     </script>
-    
-
 </body>
 </html>
 
