@@ -373,7 +373,7 @@
     </div>
 
     <div class="glass-card">
-        <div class="input-wrapper">
+        <div class="input-wrapper" id="input-container">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
             <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
@@ -424,7 +424,7 @@
         </div>
 
         <!-- Dual Buttons -->
-        <div class="action-grid">
+        <div class="action-grid" id="edit-mode-actions">
             <button class="btn-update" onclick="submitData('update')">
                 💾 Update Only
             </button>
@@ -432,6 +432,16 @@
                 🚀 Generate Now
             </button>
         </div>
+
+        <div class="action-grid" id="saved-mode-actions" style="display: none;">
+            <button class="btn-update" onclick="showEditState()">
+                ✏️ Edit Amount
+            </button>
+            <button class="btn-primary" onclick="submitData('generate')">
+                📊 Generate Report
+            </button>
+        </div>
+        <!-- ================================================= -->
 
         <div class="section-header">
             <span>Actions</span>
@@ -453,7 +463,6 @@
     
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     <script>
-        // Ensure code runs only after HTML is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
             tg.ready();
@@ -464,69 +473,75 @@
             const display = document.getElementById('displayVal');
             const waveBack = document.getElementById('waveBack');
             const waveFront = document.getElementById('waveFront');
+            
+            // Get Container Elements
+            const inputContainer = document.getElementById('input-container');
+            const editModeActions = document.getElementById('edit-mode-actions');
+            const savedModeActions = document.getElementById('saved-mode-actions');
 
-            // --- 1. Visual Indicator Logic ---
+            // --- Visual Indicator Logic ---
             function updateVisuals(value) {
                 let numericVal = parseInt(value);
-                
-                // Safety check: treat empty or invalid as 0
                 if (isNaN(numericVal) || numericVal < 0) numericVal = 0;
-                
-                // Update the Big Number
                 if(display) display.innerText = numericVal;
                 
-                // Update Wave Height (4000ml = 100%)
                 let percentage = Math.min((numericVal / 4000), 1);
-                let bottomPos = -410 + (400 * percentage); // -410px is hidden, -10px is full
+                let bottomPos = -410 + (400 * percentage);
                 
                 if(waveBack) waveBack.style.bottom = `${bottomPos}px`;
                 if(waveFront) waveFront.style.bottom = `${bottomPos}px`;
             }
 
-            // --- 2. MODIFIED Event Listeners and Initial State ---
+            // --- Initial State and Event Listeners ---
             if (input) {
-                // Add event listeners for real-time updates
                 ['input', 'change', 'keyup', 'paste'].forEach(evt => 
                     input.addEventListener(evt, function() {
                         updateVisuals(input.value);
                     })
                 );
                 
-                // --- MODIFICATION START: Read initial data from URL ---
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     const initialIntake = urlParams.get('intake');
                     const numericIntake = parseInt(initialIntake);
 
-                    if (!isNaN(numericIntake) && numericIntake > 0) {
-                        // Set the input field's value
+                    if (!isNaN(numericIntake) && numericIntake >= 0) { // Allow 0
                         input.value = numericIntake;
-                        // Trigger the visual update with the fetched value
                         updateVisuals(numericIntake);
                     } else {
-                        // If no valid parameter, initialize to 0
                         updateVisuals(0);
                     }
                 } catch (e) {
                     console.error("Failed to parse initial data:", e);
-                    // Fallback to 0 if any error occurs
                     updateVisuals(0);
                 }
-                // --- MODIFICATION END ---
             }
 
-            // --- 3. Custom Remove Functionality ---
+            // --- NEW: UI State Management Functions ---
+            window.showSavedState = function() {
+                tg.HapticFeedback.notificationOccurred('success');
+                if(inputContainer) inputContainer.style.display = 'none';
+                if(editModeActions) editModeActions.style.display = 'none';
+                if(savedModeActions) savedModeActions.style.display = 'grid'; // Use grid to match original layout
+            };
+
+            window.showEditState = function() {
+                tg.HapticFeedback.impactOccurred('light');
+                if(inputContainer) inputContainer.style.display = 'flex'; // Use flex for input layout
+                if(editModeActions) editModeActions.style.display = 'grid';
+                if(savedModeActions) savedModeActions.style.display = 'none';
+            };
+
+
+            // --- Custom Remove Functionality (Unchanged) ---
             window.removeCustomAmount = function() {
                 tg.HapticFeedback.impactOccurred('medium');
-                
                 let currentVal = parseInt(input.value);
                 if (isNaN(currentVal)) currentVal = 0;
-
                 if (currentVal <= 0) {
                     tg.showPopup({ title: 'Empty', message: 'Current amount is already 0.' });
                     return;
                 }
-
                 tg.showPopup({
                     title: 'Remove Water',
                     message: 'Select amount to subtract:',
@@ -538,9 +553,7 @@
                     ]
                 }, (btnId) => {
                     if (!btnId || btnId === 'cancel') return;
-
                     let subtractAmount = 0;
-
                     if (btnId === 'custom') {
                         let userResponse = prompt("Enter ML to remove (e.g., 50):");
                         let parsed = parseInt(userResponse);
@@ -550,51 +563,53 @@
                     } else {
                         subtractAmount = parseInt(btnId);
                     }
-
                     if (subtractAmount > 0) {
                         let newVal = Math.max(0, currentVal - subtractAmount);
                         input.value = newVal;
-                        updateVisuals(newVal); // Force visual update immediately
+                        updateVisuals(newVal);
                         tg.HapticFeedback.notificationOccurred('success');
                     }
                 });
             };
 
-            // --- 4. Submit Data Logic ---
+            // --- MODIFIED: Submit Data Logic ---
             window.submitData = function(mode) {
                 const rawVal = input.value;
                 const val = parseInt(rawVal);
                 
-                if (isNaN(val)) {
+                if (isNaN(val) || val < 0) {
                     tg.HapticFeedback.notificationOccurred('error');
-                    tg.showPopup({ title: 'Error', message: 'Please enter a valid number.' });
+                    tg.showPopup({ title: 'Error', message: 'Please enter a valid, non-negative number.' });
                     return;
                 }
 
-                tg.HapticFeedback.notificationOccurred('success');
-
-                let actionKey = (mode === 'update') ? "hydration_update_only" : "hydration_generate_now";
-
                 const payload = {
-                    action: actionKey,
                     intake_ml: val,
                     config: {
-                        bitanu: document.getElementById('tgBit') ? document.getElementById('tgBit').checked : true,
-                        shreya: document.getElementById('tgShr') ? document.getElementById('tgShr').checked : true,
-                        comparison: document.getElementById('tgComp') ? document.getElementById('tgComp').checked : true,
-                        ai: document.getElementById('tgAI') ? document.getElementById('tgAI').checked : true
+                        bitanu: document.getElementById('tgBit').checked,
+                        shreya: document.getElementById('tgShr').checked,
+                        comparison: document.getElementById('tgComp').checked,
+                        ai: document.getElementById('tgAI').checked
                     }
                 };
 
-                tg.sendData(JSON.stringify(payload));
-                
-                // Wait slightly for data transmission before closing
-                setTimeout(() => {
-                    tg.close();
-                }, 500);
+                // --- Logic Branching ---
+                if (mode === 'update') {
+                    payload.action = "hydration_update_only";
+                    tg.sendData(JSON.stringify(payload));
+                    // Instead of closing, switch to the saved UI state
+                    showSavedState(); 
+                } else if (mode === 'generate') {
+                    payload.action = "hydration_generate_now";
+                    tg.sendData(JSON.stringify(payload));
+                    // Wait slightly for data transmission before closing
+                    setTimeout(() => {
+                        tg.close();
+                    }, 500);
+                }
             };
 
-            // --- 5. Trigger Action (Help/Scripts) ---
+            // --- Trigger Action (Help/Scripts) ---
             window.triggerAction = function(actionType) {
                 tg.HapticFeedback.impactOccurred('light');
                 tg.sendData(JSON.stringify({ action: actionType }));
@@ -603,6 +618,7 @@
         });
     </script>
     
+
 </body>
 </html>
 
