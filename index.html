@@ -1,4 +1,5 @@
 
+
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -544,7 +545,7 @@
                 }
             }
 
-            // --- 4. Custom Remove Functionality (REVISED) ---
+            // --- 4. Custom Remove Functionality ---
             window.removeCustomAmount = function() {
                 tg.HapticFeedback.impactOccurred('medium');
 
@@ -582,11 +583,10 @@
                             return;
                         }
 
-                        // Calculate new total
+                        // Identify amount to remove
                         const undoAmount = lastEntry.amount;
-                        currentTotal = Math.max(0, currentTotal - undoAmount);
                         
-                        // Remove the used entry from history
+                        // Remove the used entry from history immediately
                         additionHistory.pop();
                         
                         // Update persistent storage
@@ -594,16 +594,11 @@
                             localStorage.setItem('hydrationHistory', JSON.stringify(additionHistory));
                         } catch (e) { console.error("Storage failed", e); }
 
-                        // 1. Clear Input
-                        input.value = ''; 
-                        // 2. Refresh Visuals Immediately
-                        updateVisuals(currentTotal); 
-                        // 3. Sync with Bot (Pass amount and type)
+                        // FIX: Do not calculate currentTotal here. Pass intention to submitData.
+                        // We pass: mode='update', isRemoval=true, specificAmount=undoAmount, specificType='Undo'
                         submitData('update', true, undoAmount, 'Undo');
                         
                         tg.HapticFeedback.notificationOccurred('success');
-                        // Optional: Small confirmation toast/popup
-                        // tg.showPopup({ title: 'Undone', message: `Removed ${undoAmount}ml.` });
                     }
 
                     // --- OPTION B: CUSTOM AMOUNT ---
@@ -618,15 +613,9 @@
                                     subtractAmount = currentTotal; // Cap at max available
                                 }
                                 
-                                // Update Total
-                                currentTotal = currentTotal - subtractAmount;
-
-                                // 1. Clear Input
-                                input.value = ''; 
-                                // 2. Refresh Visuals Immediately
-                                updateVisuals(currentTotal); 
-                                // 3. Sync with Bot
-                                submitData('update', true); // true = isRemoval
+                                // FIX: Do not calculate currentTotal here. Pass intention to submitData.
+                                // We pass: mode='update', isRemoval=true, specificAmount=subtractAmount, specificType='Removed'
+                                submitData('update', true, subtractAmount, 'Removed');
 
                                 tg.HapticFeedback.notificationOccurred('success');
                             } else if (userResponse !== null) {
@@ -637,7 +626,7 @@
                 });
             };
 
-            // --- 5. Submit Data Logic (MODIFIED) ---
+            // --- 5. Submit Data Logic (REVISED & FIXED) ---
             window.submitData = function(mode, isRemoval = false, specificAmount = 0, specificType = null) {
                 // Determine the amount being processed
                 // If it's a removal (Undo/Custom), use specificAmount passed from that function
@@ -657,17 +646,19 @@
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                // Calculate final total (Logic: currentTotal is already updated visually in global scope)
-                // However, for ADDITION, we usually update currentTotal right here:
-                let newTotal = currentTotal; 
+                // --- CALCULATION LOGIC ---
+                // We calculate the newTotal based on the GLOBAL currentTotal
+                let newTotal = currentTotal;
                 
-                // If it is NOT a removal, we need to add the input value to the total now
-                // because handleInput only does visual updates, it doesn't commit to currentTotal until submit.
-                if (!isRemoval) {
+                if (isRemoval) {
+                    // Subtract logic
+                    newTotal = Math.max(0, currentTotal - deltaAmount);
+                } else {
+                    // Add logic
                     newTotal = currentTotal + deltaAmount;
                 }
                 
-                // Do not allow submitting if nothing was added (unless it's a removal action).
+                // Do not allow submitting if nothing was added (unless it's a removal action, handled above).
                 if (deltaAmount <= 0 && !isRemoval) {
                     tg.HapticFeedback.notificationOccurred('error');
                     tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
@@ -675,6 +666,7 @@
                 }
 
                 // --- HISTORY TRACKING START ---
+                // Only track additions made via the main input
                 if (mode === 'update' && deltaAmount > 0 && !isRemoval) {
                     // Add date string to handle day resets
                     additionHistory.push({ amount: deltaAmount, timestamp: timeStr, dateStr: now.toDateString() });
@@ -684,16 +676,22 @@
                 }
                 // --- HISTORY TRACKING END ---
 
+                // --- UPDATE GLOBAL STATE AND VISUALS ---
+                // This is the single source of truth update
+                currentTotal = newTotal;
+                input.value = ''; // Clear input field
+                updateVisuals(currentTotal); // Update water animation
+
                 tg.HapticFeedback.notificationOccurred('success');
 
                 let actionKey = (mode === 'update') ? "hydration_update_only" : "hydration_generate_now";
 
                 const payload = {
                     action: actionKey,
-                    intake_ml: newTotal, 
-                    delta_ml: deltaAmount,       // <--- NEW: Amount changed
-                    action_type: actionTypeStr,  // <--- NEW: Added/Undo/Removed
-                    timestamp: timeStr,          // <--- NEW: Time of action
+                    intake_ml: newTotal,         // The correctly calculated total
+                    delta_ml: deltaAmount,       // The amount changed (added or removed)
+                    action_type: actionTypeStr,  // "Added", "Undo", or "Removed"
+                    timestamp: timeStr,
                     config: {
                         bitanu: document.getElementById('tgBit').checked,
                         shreya: document.getElementById('tgShr').checked,
@@ -705,11 +703,6 @@
                 tg.sendData(JSON.stringify(payload));
                 
                 if (mode === 'update') {
-                    // Commit the new total to global state
-                    currentTotal = newTotal;
-                    input.value = ''; // Clear input
-                    updateVisuals(currentTotal); 
-                    
                     // Show a subtle confirmation.
                     tg.showPopup({ title: actionTypeStr, message: `${deltaAmount}ml processed.` });
 
