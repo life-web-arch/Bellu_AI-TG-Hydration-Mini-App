@@ -467,8 +467,27 @@
 
             // --- NEW: Global state for cumulative total ---
             let currentTotal = 0;
-            // Track history for Undo functionality
+            // Track history for Undo functionality (Load from Storage)
             let additionHistory = [];
+            try {
+                const storedHistory = localStorage.getItem('hydrationHistory');
+                if (storedHistory) {
+                    additionHistory = JSON.parse(storedHistory);
+                    
+                    // Optional: Clear history if it's from a different day
+                    if (additionHistory.length > 0) {
+                        const lastDate = additionHistory[additionHistory.length - 1].dateStr;
+                        const todayStr = new Date().toDateString();
+                        if (lastDate !== todayStr) {
+                            additionHistory = []; // Reset if day changed
+                            localStorage.removeItem('hydrationHistory');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load history", e);
+                additionHistory = [];
+            }
 
             // --- 1. Visual Indicator Logic ---
             // This function now ONLY updates visuals based on a given value.
@@ -569,6 +588,11 @@
                         
                         // Remove the used entry from history
                         additionHistory.pop();
+                        
+                        // Update persistent storage
+                        try {
+                            localStorage.setItem('hydrationHistory', JSON.stringify(additionHistory));
+                        } catch (e) { console.error("Storage failed", e); }
 
                         // 1. Clear Input
                         input.value = ''; 
@@ -632,7 +656,13 @@
                 if (mode === 'update' && amountToAdd > 0 && !isRemoval) {
                     const now = new Date();
                     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    additionHistory.push({ amount: amountToAdd, timestamp: timeStr });
+                    // Add date string to handle day resets
+                    additionHistory.push({ amount: amountToAdd, timestamp: timeStr, dateStr: now.toDateString() });
+                    
+                    // Save to persistent storage
+                    try {
+                        localStorage.setItem('hydrationHistory', JSON.stringify(additionHistory));
+                    } catch (e) { console.error("Storage failed", e); }
                 }
                 // --- HISTORY TRACKING END ---
 
@@ -682,5 +712,4 @@
     </script>
 </body>
 </html>
-
 
