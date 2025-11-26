@@ -1,5 +1,4 @@
 
-
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -79,6 +78,34 @@
             animation: spin 6s linear infinite reverse;
             bottom: -410px; /* Start empty */
             z-index: 2;
+        }
+        
+        .wave-back {
+            background: rgba(6, 182, 212, 0.3);
+            animation: spin 8s linear infinite;
+            bottom: -410px; /* Start empty */
+            z-index: 1;
+        }
+
+        .wave-front {
+            background: rgba(6, 182, 212, 0.8);
+            animation: spin 6s linear infinite reverse;
+            bottom: -410px; /* Start empty */
+            z-index: 2;
+        }
+
+        /* --- NEW: Faint 2000ml Marker Animation --- */
+        .wave-marker {
+            background: rgba(224, 242, 254, 0.15); /* Very faint, light transparent cyan/white */
+            animation: spin 12s linear infinite; /* Slower spin to distinguish it */
+            bottom: -277px; /* Calculated Position for 2000ml (-410 + (400 * 0.5)) */
+            z-index: 0; /* Sit behind the active water levels */
+            border-top: 1px solid rgba(255, 255, 255, 0.3); /* Optional: faint rim to make the level clearer */
+        }
+
+        @keyframes spin {
+            from { transform: translate(-50%, 0) rotate(0deg); }
+            to { transform: translate(-50%, 0) rotate(360deg); }
         }
 
         @keyframes spin {
@@ -365,8 +392,13 @@
 <body>
 
     <div class="circle-container">
+        <!-- NEW: Fixed 2000ml Marker -->
+        <div class="wave wave-marker"></div>
+        
+
         <div class="wave wave-back" id="waveBack"></div>
         <div class="wave wave-front" id="waveFront"></div>
+        
         <div class="overlay-text">
             <h1 id="displayVal">0</h1>
             <span>ML</span>
@@ -429,7 +461,7 @@
             <button class="btn-update" onclick="submitData('update')">
                 💾 Update Only
             </button>
-            <button class="btn-primary" onclick="submitData('generate')">
+            <button class="btn-primary" onclick="confirmAndGenerate()">
                 🚀 Generate Now
             </button>
         </div>
@@ -498,7 +530,7 @@
 
                 if(display) display.innerText = numericVal;
 
-                let percentage = Math.min((numericVal / 4000), 1);
+                let percentage = Math.min((numericVal / 6000), 1);
                 let bottomPos = -410 + (400 * percentage);
 
                 if(waveBack) waveBack.style.bottom = `${bottomPos}px`;
@@ -658,11 +690,22 @@
                     newTotal = currentTotal + deltaAmount;
                 }
                 
-                // Do not allow submitting if nothing was added (unless it's a removal action, handled above).
-                if (deltaAmount <= 0 && !isRemoval) {
+                // --- MODIFICATION: Allow 0 input for Setting Updates or Generation ---
+                // We only block if the input is negative (invalid) and it's not a specific removal action.
+                // If deltaAmount is 0, we proceed (assuming user wants to save settings or generate report).
+                if (deltaAmount < 0 && !isRemoval) {
                     tg.HapticFeedback.notificationOccurred('error');
-                    tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
+                    tg.showPopup({ title: 'Invalid Amount', message: 'Amount cannot be negative.' });
                     return;
+                }
+
+                // Adjust Action String if amount is 0 (Just updating settings/Generating)
+                if (deltaAmount === 0 && !isRemoval) {
+                     if (mode === 'generate') {
+                         actionTypeStr = "Generating";
+                     } else {
+                         actionTypeStr = "Settings Updated";
+                     }
                 }
 
                 // --- HISTORY TRACKING START ---
@@ -704,7 +747,8 @@
                 
                 if (mode === 'update') {
                     // Show a subtle confirmation.
-                    tg.showPopup({ title: actionTypeStr, message: `${deltaAmount}ml processed.` });
+                    let msg = (deltaAmount === 0) ? "Configuration saved." : `${deltaAmount}ml processed.`;
+                    tg.showPopup({ title: actionTypeStr, message: msg });
 
                 } else {
                     setTimeout(() => {
@@ -712,8 +756,41 @@
                     }, 500);
                 }
             };
+            
+            // --- 6. New Confirmation Logic for Generate Button ---
+            window.confirmAndGenerate = function() {
+                tg.HapticFeedback.impactOccurred('light');
 
-            // --- 6. Trigger Action (Help/Scripts) --- (Unchanged)
+                // Check if user typed something in the input box but didn't hit update yet
+                const pendingInput = parseInt(input.value) || 0;
+                
+                // Calculate what the final total will be
+                const projectedTotal = currentTotal + pendingInput;
+                
+                // Construct the message
+                let msg = `Current Intake: ${currentTotal} ml`;
+                if (pendingInput > 0) {
+                    msg += `\n+ Pending Input: ${pendingInput} ml\n----------------\nNew Total: ${projectedTotal} ml`;
+                }
+                msg += `\n\nGenerate report with this data?`;
+
+                tg.showPopup({
+                    title: 'Confirm Generation',
+                    message: msg,
+                    buttons: [
+                        {id: 'gen', type: 'default', text: '✅ Yes, Generate'},
+                        {id: 'cancel', type: 'cancel'}
+                    ]
+                }, (btnId) => {
+                    if (btnId === 'gen') {
+                        // If there was pending input, submitData will handle the addition + generation
+                        // If input was empty, it submits 0 addition + generation
+                        submitData('generate');
+                    }
+                });
+            };
+
+            // --- 7. Trigger Action (Help/Scripts) --- (Unchanged)
             window.triggerAction = function(actionType) {
                 tg.HapticFeedback.impactOccurred('light');
                 tg.sendData(JSON.stringify({ action: actionType }));
@@ -723,6 +800,5 @@
     </script>
 </body>
 </html>
-
 
 
