@@ -467,7 +467,7 @@
 
             // --- NEW: Global state for cumulative total ---
             let currentTotal = 0;
-            let history = []; // To track additions for undo functionality
+            let lastAddedAmount = 0; // This will track the last added value for the undo feature
 
             // --- 1. Visual Indicator Logic ---
             // This function now ONLY updates visuals based on a given value.
@@ -524,72 +524,70 @@
                 }
             }
 
-            // --- 4. Custom Remove Functionality (REPLACED) ---
-            // This function now includes Undo and Subtract options.
+            // --- 4. Custom Remove/Undo Functionality (REPLACED) ---
             window.removeCustomAmount = function() {
                 tg.HapticFeedback.impactOccurred('medium');
-            
-                if (currentTotal <= 0) {
+
+                if (currentTotal <= 0 && lastAddedAmount <= 0) {
                     tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
                     return;
                 }
-            
-                // --- Build the buttons dynamically based on history ---
-                const popupButtons = [];
-                const lastAddition = history.length > 0 ? history[history.length - 1] : null;
-            
-                // 1. Add the "Undo" button only if there's a recorded action to undo
-                if (lastAddition) {
-                    popupButtons.push({
-                        id: 'undo',
-                        type: 'default',
-                        text: `Undo Last Addition (${lastAddition} ml)`
+                
+                // Define the standard buttons for subtraction
+                const buttons = [
+                    {id: '100', type: 'default', text: '-100 ml'},
+                    {id: '250', type: 'default', text: '-250 ml'},
+                    {id: 'custom', type: 'destructive', text: 'Custom Amount'},
+                    {id: 'cancel', type: 'cancel'}
+                ];
+
+                // Dynamically add an "Undo" button if there's a recent addition to undo
+                if (lastAddedAmount > 0) {
+                    buttons.unshift({
+                        id: 'undo', 
+                        type: 'default', 
+                        text: `↩️ Undo Last Add (+${lastAddedAmount}ml)`
                     });
                 }
-            
-                // 2. Add the standard fixed subtraction buttons
-                popupButtons.push({ id: '100', type: 'default', text: '-100 ml' });
-                popupButtons.push({ id: '250', type: 'default', text: '-250 ml' });
-            
-                // 3. Add the Custom Amount and Cancel buttons
-                popupButtons.push({ id: 'custom', type: 'destructive', text: 'Subtract Custom Amount' });
-                popupButtons.push({ id: 'cancel', type: 'cancel' });
-            
+
                 tg.showPopup({
-                    title: 'Adjust Total',
-                    message: `Current Total: ${currentTotal} ml. Choose an option:`,
-                    buttons: popupButtons
+                    title: 'Modify Total',
+                    message: `Current Total: ${currentTotal} ml. Choose an action:`,
+                    buttons: buttons
                 }, (btnId) => {
                     if (!btnId || btnId === 'cancel') return;
-            
-                    let amountToSubtract = 0;
-            
+                    
+                    let subtractAmount = 0;
+                    
                     if (btnId === 'undo') {
-                        if (history.length > 0) {
-                            // Pop the last recorded addition from history to be subtracted
-                            amountToSubtract = history.pop(); 
-                        }
-                    } else if (btnId === 'custom') {
-                        let userResponse = prompt("Enter amount to subtract from total:");
-                        let parsed = parseInt(userResponse);
-                        if (!isNaN(parsed) && parsed > 0) {
-                            amountToSubtract = parsed;
-                        }
+                        // Handle the undo action
+                        currentTotal = Math.max(0, currentTotal - lastAddedAmount);
+                        lastAddedAmount = 0; // Use the undo only once
                     } else {
-                        // This handles the fixed amount buttons like '100', '250', etc.
-                        amountToSubtract = parseInt(btnId);
+                        // Handle subtraction actions
+                        if (btnId === 'custom') {
+                            let userResponse = prompt("Enter the exact amount (in ml) to subtract from the total:");
+                            let parsed = parseInt(userResponse);
+                            if (!isNaN(parsed) && parsed > 0) {
+                                subtractAmount = parsed;
+                            }
+                        } else {
+                            subtractAmount = parseInt(btnId);
+                        }
+
+                        if (subtractAmount > 0) {
+                            currentTotal = Math.max(0, currentTotal - subtractAmount);
+                            // Any subtraction action invalidates the previous "add" action for undoing.
+                            lastAddedAmount = 0; 
+                        }
                     }
-            
-                    // --- Process the final subtraction ---
-                    if (amountToSubtract > 0) {
-                        currentTotal = Math.max(0, currentTotal - amountToSubtract);
-                        input.value = ''; // Clear the input field after action
-                        updateVisuals(currentTotal); // Update visuals to the new total
-                        tg.HapticFeedback.notificationOccurred('success');
-                        
-                        // Send an update to the bot to keep the backend in sync.
-                        submitData('update', true); // 'true' flags this as a removal/adjustment action
-                    }
+
+                    input.value = ''; // Clear the input field
+                    updateVisuals(currentTotal); // Update visuals to the new total
+                    tg.HapticFeedback.notificationOccurred('success');
+                    
+                    // Send an update to the bot immediately to save the new state
+                    submitData('update', true); // 'true' signifies a modification action
                 });
             };
 
@@ -606,10 +604,6 @@
                     tg.HapticFeedback.notificationOccurred('error');
                     tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
                     return;
-                }
-                // Record the addition in our history for the undo feature
-                if (amountToAdd > 0) {
-                    history.push(amountToAdd);
                 }
 
                 tg.HapticFeedback.notificationOccurred('success');
@@ -633,7 +627,14 @@
                 if (mode === 'update') {
                     // For "Update Only", we DON'T close the app.
                     // We update the state and clear the input field for the next entry.
+                    
+                    // *** MODIFICATION IS HERE: We now update our state variables ***
+                    if (amountToAdd > 0) {
+                        lastAddedAmount = amountToAdd; // Remember the last amount added
+                    }
                     currentTotal = newTotal;
+                    // ************************************************************
+
                     input.value = ''; // Clear input
                     updateVisuals(currentTotal); // Visuals already reflect this, but good practice.
                     
