@@ -42,6 +42,33 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        .top-date-label {
+            font-size: 15px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            z-index: 10;
+            
+            /* Color Changing Animation */
+            background: linear-gradient(90deg, #06b6d4, #e879f9, #22d3ee, #06b6d4);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            animation: gradientMove 3s linear infinite;
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        /* Ensure this keyframes rule exists right after the class */
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
         /* --- Water Circle Animation --- */
         .circle-container {
             position: relative;
@@ -451,6 +478,7 @@
     </style>
 </head>
 <body>
+    <div id="reportDateHeader" class="top-date-label">NEXT REPORT : -- ---</div>
 
     <div class="circle-container">
         <!-- NEW: Fixed 2000ml Marker -->
@@ -556,7 +584,7 @@
             <button class="btn-secondary" onclick="triggerAction('get_scripts')">🐍 Scripts</button>
         </div>
         
-        <button class="btn-close" onclick="tg.close()">Close</button>
+        <button class="btn-close" onclick="closeMiniApp()">Close</button>
     </div>
 
     <!-- UPDATED: Use a newer API version to ensure Menu Button compatibility -->
@@ -613,7 +641,6 @@
         target.setHours(0, 15, 0, 0);
 
         // If current time is past 00:15, target is tomorrow
-        // Example: If it's 00:10, target is today 00:15. If it's 00:20, target is tomorrow 00:15.
         if (now > target) {
             target.setDate(target.getDate() + 1);
         }
@@ -632,10 +659,52 @@
 
         display.innerText = `${hStr}:${mStr}:${sStr}`;
     }
+
         document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+
+            // --- FIX: Expose Close Function Globally ---
+            window.closeMiniApp = function() {
+                // Add simple haptic feedback for better UX
+                if(tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+                tg.close();
+            };
+            // -------------------------------------------
+
+            try {
+                const dateHeader = document.getElementById('reportDateHeader');
+                const now = new Date();
+                let target = new Date(now);
+                
+                // Set target trigger to today at 12:15 AM (00:15)
+                target.setHours(0, 15, 0, 0);
+
+                // LOGIC: 
+                // If now is earlier than 00:15 (e.g., 00:05 AM), we are in the grace period.
+                // The report belongs to the previous day (Yesterday).
+                if (now < target) {
+                    target.setDate(target.getDate() - 1);
+                }
+                // If now is later than 00:15 (e.g., 12:30 AM or 1:00 PM),
+                // The report belongs to the current day (Today).
+                // (Target is already set to Today by default, so no 'else' needed)
+
+                const day = target.getDate();
+                const month = target.toLocaleString('default', { month: 'short' }).toUpperCase();
+                // Get last 2 digits of year (e.g. 2025 -> 25)
+                const year = target.getFullYear().toString().slice(-2); 
+                
+                if (dateHeader) {
+                    // Display format: 27 NOV '25
+                    dateHeader.innerText = `NEXT REPORT : ${day} ${month} '${year}`;
+                }
+            } catch (e) {
+                console.error("Error setting date header:", e);
+            }
 
             // Get Elements
             const input = document.getElementById('intakeInput');
@@ -971,6 +1040,5 @@
     </script>
 </body>
 </html>
-
 
 
