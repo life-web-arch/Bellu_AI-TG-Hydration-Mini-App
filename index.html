@@ -376,7 +376,7 @@
         <div class="input-wrapper">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
-            <button id="removeBtn" class="btn-remove" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
+            <button id="btnRemove" class="btn-remove" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
         </div>
 
         <!-- Deadline Info Section -->
@@ -464,10 +464,11 @@
             const display = document.getElementById('displayVal');
             const waveBack = document.getElementById('waveBack');
             const waveFront = document.getElementById('waveFront');
+            const btnRemove = document.getElementById('btnRemove');
+            
 
             // --- NEW: Global state for cumulative total ---
             let currentTotal = 0;
-            let lastAddedAmount = 0; // This will track the last added value for the undo feature
 
             // --- 1. Visual Indicator Logic ---
             // This function now ONLY updates visuals based on a given value.
@@ -498,12 +499,6 @@
 
             // --- 3. Event Listeners and Initial State ---
             if (input) {
-                // --- NEW: Programmatically attach the listener to the remove button ---
-                const removeButton = document.getElementById('removeBtn');
-                if (removeButton) {
-                    removeButton.addEventListener('click', removeCustomAmount);
-                }
-
                 // The input placeholder now reflects its new purpose.
                 input.placeholder = "Enter amount to ADD (e.g. 250)";
 
@@ -530,72 +525,58 @@
                 }
             }
 
-            // --- 4. Custom Remove/Undo Functionality (REPLACED) ---
-            window.removeCustomAmount = function() {
-                tg.HapticFeedback.impactOccurred('medium');
+            // --- 4. Custom Remove Functionality (MODIFIED) ---
+            // This event listener replaces the previous window.removeCustomAmount function
+            if (btnRemove) {
+                btnRemove.addEventListener('click', function() {
+                    tg.HapticFeedback.impactOccurred('medium');
 
-                if (currentTotal <= 0 && lastAddedAmount <= 0) {
-                    tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
-                    return;
-                }
-                
-                // Define the standard buttons for subtraction
-                const buttons = [
-                    {id: '100', type: 'default', text: '-100 ml'},
-                    {id: '250', type: 'default', text: '-250 ml'},
-                    {id: 'custom', type: 'destructive', text: 'Custom Amount'},
-                    {id: 'cancel', type: 'cancel'}
-                ];
+                    if (currentTotal <= 0) {
+                        tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
+                        return;
+                    }
 
-                // Dynamically add an "Undo" button if there's a recent addition to undo
-                if (lastAddedAmount > 0) {
-                    buttons.unshift({
-                        id: 'undo', 
-                        type: 'default', 
-                        text: `↩️ Undo Last Add (+${lastAddedAmount}ml)`
-                    });
-                }
-
-                tg.showPopup({
-                    title: 'Modify Total',
-                    message: `Current Total: ${currentTotal} ml. Choose an action:`,
-                    buttons: buttons
-                }, (btnId) => {
-                    if (!btnId || btnId === 'cancel') return;
-                    
-                    let subtractAmount = 0;
-                    
-                    if (btnId === 'undo') {
-                        // Handle the undo action
-                        currentTotal = Math.max(0, currentTotal - lastAddedAmount);
-                        lastAddedAmount = 0; // Use the undo only once
-                    } else {
-                        // Handle subtraction actions
+                    tg.showPopup({
+                        title: 'Subtract from Total',
+                        message: `Current Total: ${currentTotal} ml.\nSelect amount to subtract:`,
+                        buttons: [
+                            {id: '100', type: 'default', text: '-100 ml'},
+                            {id: '250', type: 'default', text: '-250 ml'},
+                            {id: 'custom', type: 'destructive', text: 'Custom Amount'},
+                            {id: 'cancel', type: 'cancel'}
+                        ]
+                    }, (btnId) => {
+                        if (!btnId || btnId === 'cancel') return;
+                        
+                        let subtractAmount = 0;
+                        
                         if (btnId === 'custom') {
-                            let userResponse = prompt("Enter the exact amount (in ml) to subtract from the total:");
-                            let parsed = parseInt(userResponse);
-                            if (!isNaN(parsed) && parsed > 0) {
-                                subtractAmount = parsed;
+                            // Using native prompt for custom subtraction
+                            // Note: WebApp must support prompt, usually works fine
+                            let userResponse = prompt("Enter ML to subtract from total:");
+                            if (userResponse) {
+                                let parsed = parseInt(userResponse);
+                                if (!isNaN(parsed) && parsed > 0) subtractAmount = parsed;
                             }
                         } else {
                             subtractAmount = parseInt(btnId);
                         }
 
                         if (subtractAmount > 0) {
-                            currentTotal = Math.max(0, currentTotal - subtractAmount);
-                            // Any subtraction action invalidates the previous "add" action for undoing.
-                            lastAddedAmount = 0; 
+                            // Ensure we don't go below zero
+                            let newCalc = currentTotal - subtractAmount;
+                            currentTotal = newCalc < 0 ? 0 : newCalc;
+                            
+                            if(input) input.value = ''; // Clear the input field
+                            updateVisuals(currentTotal); // Update visuals to new total
+                            tg.HapticFeedback.notificationOccurred('success');
+                            
+                            // Send update to bot immediately (isRemoval = true)
+                            submitData('update', true);
                         }
-                    }
-
-                    input.value = ''; // Clear the input field
-                    updateVisuals(currentTotal); // Update visuals to the new total
-                    tg.HapticFeedback.notificationOccurred('success');
-                    
-                    // Send an update to the bot immediately to save the new state
-                    submitData('update', true); // 'true' signifies a modification action
+                    });
                 });
-            };
+            }
 
             // --- 5. Submit Data Logic (MODIFIED) ---
             window.submitData = function(mode, isRemoval = false) {
@@ -633,14 +614,7 @@
                 if (mode === 'update') {
                     // For "Update Only", we DON'T close the app.
                     // We update the state and clear the input field for the next entry.
-                    
-                    // *** MODIFICATION IS HERE: We now update our state variables ***
-                    if (amountToAdd > 0) {
-                        lastAddedAmount = amountToAdd; // Remember the last amount added
-                    }
                     currentTotal = newTotal;
-                    // ************************************************************
-
                     input.value = ''; // Clear input
                     updateVisuals(currentTotal); // Visuals already reflect this, but good practice.
                     
