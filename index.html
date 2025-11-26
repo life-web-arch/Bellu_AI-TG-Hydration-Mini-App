@@ -598,8 +598,8 @@
                         input.value = ''; 
                         // 2. Refresh Visuals Immediately
                         updateVisuals(currentTotal); 
-                        // 3. Sync with Bot
-                        submitData('update', true); // true = isRemoval
+                        // 3. Sync with Bot (Pass amount and type)
+                        submitData('update', true, undoAmount, 'Undo');
                         
                         tg.HapticFeedback.notificationOccurred('success');
                         // Optional: Small confirmation toast/popup
@@ -638,28 +638,46 @@
             };
 
             // --- 5. Submit Data Logic (MODIFIED) ---
-            window.submitData = function(mode, isRemoval = false) {
-                const amountToAdd = parseInt(input.value) || 0;
+            window.submitData = function(mode, isRemoval = false, specificAmount = 0, specificType = null) {
+                // Determine the amount being processed
+                // If it's a removal (Undo/Custom), use specificAmount passed from that function
+                // If it's an addition (Generate/Update button), read from Input
+                const amountFromInput = parseInt(input.value) || 0;
+                const deltaAmount = isRemoval ? specificAmount : amountFromInput;
+                
+                // Determine Action Type String
+                let actionTypeStr = "";
+                if (isRemoval) {
+                    actionTypeStr = specificType || "Removed";
+                } else {
+                    actionTypeStr = "Added";
+                }
 
-                // On removal, amountToAdd is 0, so newTotal is just the updated currentTotal.
-                // Otherwise, it's the sum.
-                const newTotal = currentTotal + amountToAdd;
+                // Calculate timestamp
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+                // Calculate final total (Logic: currentTotal is already updated visually in global scope)
+                // However, for ADDITION, we usually update currentTotal right here:
+                let newTotal = currentTotal; 
+                
+                // If it is NOT a removal, we need to add the input value to the total now
+                // because handleInput only does visual updates, it doesn't commit to currentTotal until submit.
+                if (!isRemoval) {
+                    newTotal = currentTotal + deltaAmount;
+                }
+                
                 // Do not allow submitting if nothing was added (unless it's a removal action).
-                if (amountToAdd <= 0 && !isRemoval) {
+                if (deltaAmount <= 0 && !isRemoval) {
                     tg.HapticFeedback.notificationOccurred('error');
                     tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
                     return;
                 }
+
                 // --- HISTORY TRACKING START ---
-                // Only push to history if we are adding positive amount and it is NOT a removal action
-                if (mode === 'update' && amountToAdd > 0 && !isRemoval) {
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (mode === 'update' && deltaAmount > 0 && !isRemoval) {
                     // Add date string to handle day resets
-                    additionHistory.push({ amount: amountToAdd, timestamp: timeStr, dateStr: now.toDateString() });
-                    
-                    // Save to persistent storage
+                    additionHistory.push({ amount: deltaAmount, timestamp: timeStr, dateStr: now.toDateString() });
                     try {
                         localStorage.setItem('hydrationHistory', JSON.stringify(additionHistory));
                     } catch (e) { console.error("Storage failed", e); }
@@ -672,7 +690,10 @@
 
                 const payload = {
                     action: actionKey,
-                    intake_ml: newTotal, // Send the NEW CUMULATIVE total.
+                    intake_ml: newTotal, 
+                    delta_ml: deltaAmount,       // <--- NEW: Amount changed
+                    action_type: actionTypeStr,  // <--- NEW: Added/Undo/Removed
+                    timestamp: timeStr,          // <--- NEW: Time of action
                     config: {
                         bitanu: document.getElementById('tgBit').checked,
                         shreya: document.getElementById('tgShr').checked,
@@ -683,19 +704,16 @@
 
                 tg.sendData(JSON.stringify(payload));
                 
-                // --- BEHAVIOR CHANGE ---
                 if (mode === 'update') {
-                    // For "Update Only", we DON'T close the app.
-                    // We update the state and clear the input field for the next entry.
+                    // Commit the new total to global state
                     currentTotal = newTotal;
                     input.value = ''; // Clear input
-                    updateVisuals(currentTotal); // Visuals already reflect this, but good practice.
+                    updateVisuals(currentTotal); 
                     
                     // Show a subtle confirmation.
-                    tg.showPopup({ title: 'Updated!', message: `New total is ${currentTotal} ml.` });
+                    tg.showPopup({ title: actionTypeStr, message: `${deltaAmount}ml processed.` });
 
                 } else {
-                    // For "Generate Now", we close the app as before.
                     setTimeout(() => {
                         tg.close();
                     }, 500);
@@ -712,4 +730,6 @@
     </script>
 </body>
 </html>
+
+
 
