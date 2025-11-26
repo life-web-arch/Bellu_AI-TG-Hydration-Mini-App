@@ -376,7 +376,7 @@
         <div class="input-wrapper">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
-            <button id="btnRemove" class="btn-remove" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
+            <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
         </div>
 
         <!-- Deadline Info Section -->
@@ -464,11 +464,11 @@
             const display = document.getElementById('displayVal');
             const waveBack = document.getElementById('waveBack');
             const waveFront = document.getElementById('waveFront');
-            const btnRemove = document.getElementById('btnRemove');
-            
 
             // --- NEW: Global state for cumulative total ---
             let currentTotal = 0;
+            // Track history for Undo functionality
+            let additionHistory = [];
 
             // --- 1. Visual Indicator Logic ---
             // This function now ONLY updates visuals based on a given value.
@@ -525,58 +525,93 @@
                 }
             }
 
-            // --- 4. Custom Remove Functionality (MODIFIED) ---
-            // This event listener replaces the previous window.removeCustomAmount function
-            if (btnRemove) {
-                btnRemove.addEventListener('click', function() {
-                    tg.HapticFeedback.impactOccurred('medium');
+            // --- 4. Custom Remove Functionality (REVISED) ---
+            window.removeCustomAmount = function() {
+                tg.HapticFeedback.impactOccurred('medium');
 
-                    if (currentTotal <= 0) {
-                        tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
-                        return;
+                if (currentTotal <= 0) {
+                    tg.showPopup({ title: 'Empty', message: 'Current total is already 0.' });
+                    return;
+                }
+
+                // Prepare Undo Button Text
+                let undoButtonText = "Undo Last Added"; // Default text
+                let lastEntry = null;
+                
+                if (additionHistory.length > 0) {
+                    lastEntry = additionHistory[additionHistory.length - 1];
+                    // Format: "Undo 250ml (10:30 AM)"
+                    undoButtonText = `Undo ${lastEntry.amount}ml (${lastEntry.timestamp})`;
+                }
+
+                // Show the Popup with Options
+                tg.showPopup({
+                    title: 'Remove Water',
+                    message: `Current Total: ${currentTotal} ml.\n\nChoose an action:`,
+                    buttons: [
+                        {id: 'undo', type: 'destructive', text: undoButtonText},
+                        {id: 'custom', type: 'default', text: 'Remove Custom Amount'},
+                        {id: 'cancel', type: 'cancel'}
+                    ]
+                }, (btnId) => {
+                    if (!btnId || btnId === 'cancel') return;
+
+                    // --- OPTION A: UNDO LAST ENTRY ---
+                    if (btnId === 'undo') {
+                        if (!lastEntry) {
+                            tg.showAlert("No recorded additions in this session to undo.");
+                            return;
+                        }
+
+                        // Calculate new total
+                        const undoAmount = lastEntry.amount;
+                        currentTotal = Math.max(0, currentTotal - undoAmount);
+                        
+                        // Remove the used entry from history
+                        additionHistory.pop();
+
+                        // 1. Clear Input
+                        input.value = ''; 
+                        // 2. Refresh Visuals Immediately
+                        updateVisuals(currentTotal); 
+                        // 3. Sync with Bot
+                        submitData('update', true); // true = isRemoval
+                        
+                        tg.HapticFeedback.notificationOccurred('success');
+                        // Optional: Small confirmation toast/popup
+                        // tg.showPopup({ title: 'Undone', message: `Removed ${undoAmount}ml.` });
                     }
 
-                    tg.showPopup({
-                        title: 'Subtract from Total',
-                        message: `Current Total: ${currentTotal} ml.\nSelect amount to subtract:`,
-                        buttons: [
-                            {id: '100', type: 'default', text: '-100 ml'},
-                            {id: '250', type: 'default', text: '-250 ml'},
-                            {id: 'custom', type: 'destructive', text: 'Custom Amount'},
-                            {id: 'cancel', type: 'cancel'}
-                        ]
-                    }, (btnId) => {
-                        if (!btnId || btnId === 'cancel') return;
-                        
-                        let subtractAmount = 0;
-                        
-                        if (btnId === 'custom') {
-                            // Using native prompt for custom subtraction
-                            // Note: WebApp must support prompt, usually works fine
-                            let userResponse = prompt("Enter ML to subtract from total:");
-                            if (userResponse) {
-                                let parsed = parseInt(userResponse);
-                                if (!isNaN(parsed) && parsed > 0) subtractAmount = parsed;
-                            }
-                        } else {
-                            subtractAmount = parseInt(btnId);
-                        }
+                    // --- OPTION B: CUSTOM AMOUNT ---
+                    else if (btnId === 'custom') {
+                        // Use a slight delay to ensure the previous popup closes cleanly
+                        setTimeout(() => {
+                            let userResponse = prompt(`Current Total: ${currentTotal} ml.\n\nEnter amount to subtract (ml):`);
+                            let subtractAmount = parseInt(userResponse);
 
-                        if (subtractAmount > 0) {
-                            // Ensure we don't go below zero
-                            let newCalc = currentTotal - subtractAmount;
-                            currentTotal = newCalc < 0 ? 0 : newCalc;
-                            
-                            if(input) input.value = ''; // Clear the input field
-                            updateVisuals(currentTotal); // Update visuals to new total
-                            tg.HapticFeedback.notificationOccurred('success');
-                            
-                            // Send update to bot immediately (isRemoval = true)
-                            submitData('update', true);
-                        }
-                    });
+                            if (!isNaN(subtractAmount) && subtractAmount > 0) {
+                                if (subtractAmount > currentTotal) {
+                                    subtractAmount = currentTotal; // Cap at max available
+                                }
+                                
+                                // Update Total
+                                currentTotal = currentTotal - subtractAmount;
+
+                                // 1. Clear Input
+                                input.value = ''; 
+                                // 2. Refresh Visuals Immediately
+                                updateVisuals(currentTotal); 
+                                // 3. Sync with Bot
+                                submitData('update', true); // true = isRemoval
+
+                                tg.HapticFeedback.notificationOccurred('success');
+                            } else if (userResponse !== null) {
+                                tg.showAlert("Invalid amount entered.");
+                            }
+                        }, 100);
+                    }
                 });
-            }
+            };
 
             // --- 5. Submit Data Logic (MODIFIED) ---
             window.submitData = function(mode, isRemoval = false) {
@@ -592,6 +627,14 @@
                     tg.showPopup({ title: 'No Change', message: 'Please enter an amount to add.' });
                     return;
                 }
+                // --- HISTORY TRACKING START ---
+                // Only push to history if we are adding positive amount and it is NOT a removal action
+                if (mode === 'update' && amountToAdd > 0 && !isRemoval) {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    additionHistory.push({ amount: amountToAdd, timestamp: timeStr });
+                }
+                // --- HISTORY TRACKING END ---
 
                 tg.HapticFeedback.notificationOccurred('success');
 
