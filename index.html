@@ -1,5 +1,4 @@
 
-
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -580,25 +579,6 @@
                     // -------------------------------------------
 
                     const initialIntake = urlParams.get('intake');
-                    const const urlParams = new URLSearchParams(window.location.search);
-                    
-                    // --- NEW: Restore Toggle States from URL ---
-                    // "1" means true (checked), "0" means false (unchecked)
-                    if (urlParams.has('bitanu')) {
-                        document.getElementById('tgBit').checked = (urlParams.get('bitanu') === '1');
-                    }
-                    if (urlParams.has('shreya')) {
-                        document.getElementById('tgShr').checked = (urlParams.get('shreya') === '1');
-                    }
-                    if (urlParams.has('comp')) {
-                        document.getElementById('tgComp').checked = (urlParams.get('comp') === '1');
-                    }
-                    if (urlParams.has('ai')) {
-                        document.getElementById('tgAI').checked = (urlParams.get('ai') === '1');
-                    }
-                    // -------------------------------------------
-
-                    const initialIntake = urlParams.get('intake'); = urlParams.get('intake');
                     const numericIntake = parseInt(initialIntake);
 
                     if (!isNaN(numericIntake) && numericIntake >= 0) {
@@ -837,5 +817,6 @@
     </script>
 </body>
 </html>
+
 
 
