@@ -376,7 +376,7 @@
         <div class="input-wrapper">
             <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
             <!-- Custom Remove Button -->
-            <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
+            <button id="removeBtn" class="btn-remove" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
         </div>
 
         <!-- Deadline Info Section -->
@@ -498,6 +498,12 @@
 
             // --- 3. Event Listeners and Initial State ---
             if (input) {
+                // --- NEW: Programmatically attach the listener to the remove button ---
+                const removeButton = document.getElementById('removeBtn');
+                if (removeButton) {
+                    removeButton.addEventListener('click', removeCustomAmount);
+                }
+
                 // The input placeholder now reflects its new purpose.
                 input.placeholder = "Enter amount to ADD (e.g. 250)";
 
