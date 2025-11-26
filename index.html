@@ -387,6 +387,67 @@
             font-weight: 600;
             cursor: pointer;
         }
+        
+        /* --- NEW: Auto-Report Timer Styles --- */
+        .timer-container {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        /* Class to hide the timer with animation */
+        .timer-container.hidden {
+            opacity: 0;
+            margin-top: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            height: 0;
+            border: none;
+            transform: translateY(-10px);
+            pointer-events: none;
+        }
+
+        .timer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .timer-label {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .timer-sublabel {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .timer-digits {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            background: rgba(6, 182, 212, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
+            letter-spacing: 2px;
+        }
     </style>
 </head>
 <body>
@@ -454,7 +515,26 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            
+            <!-- NEW: Auto-Report Toggle -->
+            <div class="toggle-item">
+                <span class="toggle-label">🤖 Auto-Generate Report</span>
+                <label class="switch">
+                    <input type="checkbox" id="tgAuto" checked onchange="toggleTimerVisibility()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div> <!-- End of toggle-list -->
+
+        <!-- NEW: Aesthetic Countdown Timer -->
+        <div id="autoTimerBox" class="timer-container">
+            <div class="timer-info">
+                <span class="timer-label">Next Auto-Report</span>
+                <span class="timer-sublabel">Generating in:</span>
+            </div>
+            <div class="timer-digits" id="countdownDisplay">--:--:--</div>
         </div>
+        
 
         <!-- Dual Buttons -->
         <div class="action-grid">
@@ -487,6 +567,71 @@
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     
     <script>
+    
+        // --- NEW: Global Timer Variables ---
+    let reportTimerInterval = null;
+
+    // Function to toggle visibility based on checkbox
+    function toggleTimerVisibility() {
+        const isEnabled = document.getElementById('tgAuto').checked;
+        const timerBox = document.getElementById('autoTimerBox');
+        
+        if (isEnabled) {
+            timerBox.classList.remove('hidden');
+            startReportTimer();
+        } else {
+            timerBox.classList.add('hidden');
+            stopReportTimer();
+        }
+    }
+
+    // Function to calculate and display time remaining
+    function startReportTimer() {
+        stopReportTimer(); // Clear existing to prevent duplicates
+        
+        // Update immediately
+        updateTimerDisplay();
+
+        reportTimerInterval = setInterval(updateTimerDisplay, 1000);
+    }
+
+    function stopReportTimer() {
+        if (reportTimerInterval) {
+            clearInterval(reportTimerInterval);
+            reportTimerInterval = null;
+        }
+    }
+
+    function updateTimerDisplay() {
+        const display = document.getElementById('countdownDisplay');
+        if (!display) return;
+
+        const now = new Date();
+        
+        // Target is 12:15 AM (00:15)
+        let target = new Date(now);
+        target.setHours(0, 15, 0, 0);
+
+        // If current time is past 00:15, target is tomorrow
+        // Example: If it's 00:10, target is today 00:15. If it's 00:20, target is tomorrow 00:15.
+        if (now > target) {
+            target.setDate(target.getDate() + 1);
+        }
+
+        const diff = target - now;
+
+        // Calculate hours, minutes, seconds
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+        // Format with leading zeros
+        const hStr = h < 10 ? "0" + h : h;
+        const mStr = m < 10 ? "0" + m : m;
+        const sStr = s < 10 ? "0" + s : s;
+
+        display.innerText = `${hStr}:${mStr}:${sStr}`;
+    }
         document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
             tg.ready();
@@ -576,6 +721,14 @@
                     if (urlParams.has('ai')) {
                         document.getElementById('tgAI').checked = (urlParams.get('ai') === '1');
                     }
+                    
+                    // --- NEW: Restore Auto-Report Toggle State ---
+                    if (urlParams.has('auto')) {
+                        document.getElementById('tgAuto').checked = (urlParams.get('auto') === '1');
+                    }
+                    
+                    // Initialize Timer Visibility based on restored state
+                    toggleTimerVisibility();
                     // -------------------------------------------
 
                     const initialIntake = urlParams.get('intake');
@@ -756,7 +909,8 @@
                         bitanu: document.getElementById('tgBit').checked,
                         shreya: document.getElementById('tgShr').checked,
                         comparison: document.getElementById('tgComp').checked,
-                        ai: document.getElementById('tgAI').checked
+                        ai: document.getElementById('tgAI').checked,
+                        auto: document.getElementById('tgAuto').checked
                     }
                 };
 
