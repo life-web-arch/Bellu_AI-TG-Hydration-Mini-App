@@ -475,21 +475,30 @@
             text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
             letter-spacing: 2px;
         }
-        /* --- NEW: Loading Overlay Styles --- */
+        /* --- UPDATED: Perfect Center Loading Overlay --- */
         .loading-overlay {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            z-index: 2000; /* Above everything */
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            /* Use dvh to handle mobile address bars correctly */
+            height: 100dvh; 
+            background: rgba(15, 23, 42, 0.96); /* Slightly darker for better contrast */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 9999; 
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.3s ease-in-out;
+            /* Prevents text selection during loading */
+            user-select: none; 
+            -webkit-user-select: none;
+            /* Uniform spacing between elements using gap instead of margins */
+            gap: 20px; 
         }
 
         .loading-overlay.active {
@@ -499,50 +508,64 @@
 
         .status-icon-container {
             position: relative;
-            width: 80px;
-            height: 80px;
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 90px;  /* Slightly larger for visibility */
+            height: 90px;
+            display: grid; /* Grid centers content perfectly */
+            place-items: center;
+            /* Removed margin-bottom because we use 'gap' in parent */
         }
 
         .spinner-ring {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 4px solid rgba(6, 182, 212, 0.1);
+            inset: 0; /* Shortcut for top/bottom/left/right: 0 */
+            border: 4px solid rgba(6, 182, 212, 0.15);
             border-top: 4px solid #06b6d4;
             border-radius: 50%;
+            box-sizing: border-box; /* Ensures border doesn't add size */
             animation: spin 1s linear infinite;
         }
 
         .spinner-core {
-            font-size: 32px;
+            font-size: 36px; /* Larger icon */
+            line-height: 1;  /* Fixes vertical font alignment issues */
             animation: pulse 1.5s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
         }
 
         .loading-text {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 800;
             color: #fff;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
-            margin-bottom: 10px;
+            text-align: center; /* Forces center alignment */
+            text-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+            margin: 0;
+            padding: 0 20px; /* Safe padding for small screens */
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .loading-subtext {
-            font-size: 14px;
+            font-size: 13px;
             color: #94a3b8;
-            font-family: monospace;
+            font-family: 'Courier New', Courier, monospace;
             letter-spacing: 0.5px;
+            text-align: center;
+            margin: 0;
+            opacity: 0.8;
         }
 
         /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.85; }
         }
     </style>
 </head>
@@ -666,7 +689,8 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="status-icon-container">
             <div class="spinner-ring"></div>
-            <div class="spinner-core">🌊</div>
+            <!-- Added style to ensure emoji centers vertically in text-box -->
+            <div class="spinner-core" style="padding-bottom: 3px;">🌊</div>
         </div>
         <div class="loading-text" id="loadingTitle">PROCESSING</div>
         <div class="loading-subtext" id="loadingMsg">Syncing with Bellu AI...</div>
@@ -1164,6 +1188,5 @@
     </script>
 </body>
 </html>
-
 
 
