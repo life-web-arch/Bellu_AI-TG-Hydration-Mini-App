@@ -21,11 +21,12 @@
             --btn-update-bg: rgba(51, 65, 85, 0.8);
         }
         
-        /* --- NEW: Global Tap Highlight Removal --- */
+        /* --- NEW: Global Tap Highlight Removal & Box Sizing Fix --- */
         * {
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none; /* Prevents long-press menu on some elements */
             outline: none; /* Removes focus ring */
+            box-sizing: border-box; /* CRITICAL FIX: Prevents padding from breaking alignment */
         }
         
         body {
@@ -148,6 +149,12 @@
             z-index: 10;
             text-align: center;
             text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            /* MODIFIED: Flex alignment to ensure number and label are perfectly stacked */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%; /* Ensures text center aligns relative to container width */
         }
 
         .overlay-text h1 {
@@ -212,7 +219,8 @@
         }
 
         input[type="number"] {
-            width: 100%;
+            flex: 1; /* MODIFIED: Auto-fills remaining space instead of forcing 100% width */
+            min-width: 0; /* Safety for flexbox to prevent overflow */
             padding: 16px;
             background: rgba(15, 23, 42, 0.6);
             border: 2px solid #334155;
@@ -475,27 +483,21 @@
             text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
             letter-spacing: 2px;
         }
-        /* --- NEW: Loading Overlay Styles (Corrected Alignment) --- */
+        /* --- NEW: Loading Overlay Styles --- */
         .loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            z-index: 9999; /* Higher index to cover everything */
+            z-index: 2000; /* Above everything */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center; /* Ensures text is centered if it wraps */
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: 20px; /* Safe spacing from edges */
-            box-sizing: border-box;
         }
 
         .loading-overlay.active {
@@ -511,7 +513,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            flex-shrink: 0; /* Prevents squishing on small screens */
         }
 
         .spinner-ring {
@@ -522,13 +523,11 @@
             border-top: 4px solid #06b6d4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            box-sizing: border-box; /* Fixes border alignment */
         }
 
         .spinner-core {
             font-size: 32px;
             animation: pulse 1.5s ease-in-out infinite;
-            line-height: 1; /* Fixes vertical alignment of emoji */
         }
 
         .loading-text {
@@ -539,7 +538,6 @@
             letter-spacing: 2px;
             text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
             margin-bottom: 10px;
-            max-width: 100%;
         }
 
         .loading-subtext {
@@ -547,7 +545,6 @@
             color: #94a3b8;
             font-family: monospace;
             letter-spacing: 0.5px;
-            max-width: 100%;
         }
 
         /* Animations */
@@ -670,9 +667,6 @@
     <!-- UPDATED: Use a newer API version to ensure Menu Button compatibility -->
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     
-    <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
-    
-    <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     <!-- ★★★ NEW: Full Screen Loading/Status Overlay ★★★ -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="status-icon-container">
