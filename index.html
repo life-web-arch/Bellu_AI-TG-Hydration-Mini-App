@@ -62,6 +62,10 @@
             color: transparent;
             animation: gradientMove 3s linear infinite;
             text-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+            
+            /* --- ADDED FOR ALTERNATING TEXT EFFECT --- */
+            transition: opacity 0.8s ease-in-out;
+            opacity: 1;
         }
 
         /* Ensure this keyframes rule exists right after the class */
@@ -910,23 +914,63 @@
                     } else {
                         updateVisuals(0); // Default to 0 if no valid data.
                     }
-                    // --- NEW: Visual cues for Start of Day / Reset ---
-                    // If intake is exactly 0, it implies a new day or manual reset.
-                    if (numericIntake === 0) {
-                        // Set title header to indicate new tracking cycle
-                        const dateHeader = document.getElementById('reportDateHeader');
-                        if(dateHeader) {
-                            dateHeader.innerText = "✨ NEW DAY : TRACKING STARTED";
-                            dateHeader.style.color = "#10b981"; // Green text
-                        }
+                    // --- NEW: Visual cues for Start of Day / Reset (Time-Window Based) ---
+                    // Logic: Only show "NEW DAY" if intake is 0 AND time is between 00:15 AM and 12:15 PM.
+                    
+                    const dateHeader = document.getElementById('reportDateHeader');
+                    
+                    if (numericIntake === 0 && dateHeader) {
+                        const now = new Date();
                         
-                        // Optional: Show a brief welcome toast via the overlay
-                        setTimeout(() => {
-                             // Only show if the user hasn't interacted yet
-                             if (!document.getElementById('loadingOverlay').classList.contains('active')) {
-                                 tg.HapticFeedback.notificationOccurred('success');
-                             }
-                        }, 500);
+                        // Define Window Start: Today 00:15:00
+                        const windowStart = new Date(now);
+                        windowStart.setHours(0, 15, 0, 0);
+                        
+                        // Define Window End: Today 12:15:00 (12 Hours later)
+                        const windowEnd = new Date(now);
+                        windowEnd.setHours(12, 15, 0, 0);
+
+                        // Check if we are currently within this 12-hour window
+                        if (now >= windowStart && now < windowEnd) {
+                            
+                            // Store the standard "NEXT REPORT" text (already calculated at top of script)
+                            const standardText = dateHeader.innerText;
+                            const newDayText = "✨ NEW DAY : TRACKING STARTED";
+                            
+                            // Immediately set to New Day text initially
+                            dateHeader.innerText = newDayText;
+                            
+                            // Haptic Feedback for the fresh start
+                            setTimeout(() => {
+                                 if (!document.getElementById('loadingOverlay').classList.contains('active')) {
+                                     tg.HapticFeedback.notificationOccurred('success');
+                                 }
+                            }, 500);
+
+                            // --- ALTERNATING TEXT LOGIC ---
+                            let showingNewDay = true;
+                            
+                            // Function to swap text with opacity fade
+                            setInterval(() => {
+                                // 1. Fade Out
+                                dateHeader.style.opacity = '0';
+                                
+                                setTimeout(() => {
+                                    // 2. Swap Text
+                                    if (showingNewDay) {
+                                        dateHeader.innerText = standardText;
+                                    } else {
+                                        dateHeader.innerText = newDayText;
+                                    }
+                                    showingNewDay = !showingNewDay;
+                                    
+                                    // 3. Fade In
+                                    dateHeader.style.opacity = '1';
+                                }, 800); // Wait for fade out transition to finish (matches CSS 0.8s)
+                                
+                            }, 5000); // Swap every 5 seconds
+                        }
+                        // If outside window (e.g. 8 PM) but intake is 0, it stays as default "NEXT REPORT"
                     }
                 } catch (e) {
                     console.error("Failed to parse initial data:", e);
@@ -1169,3 +1213,4 @@
     </script>
 </body>
 </html>
+
