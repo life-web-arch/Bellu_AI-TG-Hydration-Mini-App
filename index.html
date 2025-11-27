@@ -1,4 +1,5 @@
 
+
 <!--Bellu AI TG_Hydration_miniappTG.html-->
 
 <!DOCTYPE html>
@@ -530,7 +531,15 @@
         }
 
         .spinner-core {
-            font-size: 32px;
+            position: absolute; /* Detach from flow to overlay perfectly */
+            top: 50%;           /* Move to vertical middle */
+            left: 50%;          /* Move to horizontal middle */
+            font-size: 35px;    /* Slight increase for better visual balance */
+            line-height: 1;     /* Eliminate vertical font offset */
+            padding-top: 4px;   /* Micro-adjustment to fix Emoji baseline visual center */
+            z-index: 2;         /* Ensure it sits above the ring */
+            
+            /* Transform is now handled inside the keyframes to avoid conflict */
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -553,8 +562,16 @@
 
         /* Animations */
         @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
+            0%, 100% { 
+                /* Maintain centering while scaling */
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 1; 
+            }
+            50% { 
+                /* Maintain centering while scaling up */
+                transform: translate(-50%, -50%) scale(1.25); 
+                opacity: 0.8; 
+            }
         }
     </style>
 </head>
