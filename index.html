@@ -506,14 +506,11 @@
         }
 
         .status-icon-container {
-            position: relative;
+            position: relative; /* Acts as the anchor for absolute positioning */
             width: 80px;
             height: 80px;
             margin-bottom: 25px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2001;
+            display: block; /* Removed flexbox to prevent alignment conflicts */
         }
 
         .spinner-ring {
@@ -525,18 +522,23 @@
             border: 4px solid rgba(6, 182, 212, 0.1);
             border-top: 4px solid #06b6d4;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            box-sizing: border-box; /* Ensures the border doesn't expand the size */
+            box-sizing: border-box; /* Ensures border stays inside the 80px box */
+            animation: loaderSpin 1s linear infinite; /* Uses new, clean rotation */
         }
 
         .spinner-core {
-            font-size: 34px; /* Increased slightly for better proportion */
-            line-height: 1;  /* CRITICAL: Collapses font vertical space to center the glyph */
-            display: block;  /* Removes inline spacing behaviors */
-            margin-top: -3px; /* Optical Adjustment: Lifts the emoji slightly to exact visual center */
-            animation: pulse 1.5s ease-in-out infinite;
-            position: relative;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* translate(-50%, -50%) centers it mathematically */
+            /* We use -55% on Y to lift the emoji slightly for OPTICAL centering */
+            transform: translate(-50%, -55%);
+            font-size: 34px;
+            line-height: 1; /* Removes font line-height gap */
+            width: auto;
+            height: auto;
             z-index: 2;
+            animation: emojiPulse 1.5s ease-in-out infinite; /* Uses new centered pulse */
         }
 
         .loading-text {
@@ -556,10 +558,18 @@
             letter-spacing: 0.5px;
         }
 
-        /* Animations */
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
+        /* --- NEW: Dedicated Animations to prevent conflicts --- */
+        
+        /* Rotates perfectly without moving the element's position */
+        @keyframes loaderSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Includes the translate coordinates so centering isn't lost during animation */
+        @keyframes emojiPulse {
+            0%, 100% { transform: translate(-50%, -55%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -55%) scale(1.2); opacity: 0.8; }
         }
     </style>
 </head>
