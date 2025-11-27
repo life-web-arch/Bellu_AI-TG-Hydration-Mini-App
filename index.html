@@ -513,21 +513,30 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            z-index: 2001;
         }
 
         .spinner-ring {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             border: 4px solid rgba(6, 182, 212, 0.1);
             border-top: 4px solid #06b6d4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            box-sizing: border-box; /* Ensures the border doesn't expand the size */
         }
 
         .spinner-core {
-            font-size: 32px;
+            font-size: 34px; /* Increased slightly for better proportion */
+            line-height: 1;  /* CRITICAL: Collapses font vertical space to center the glyph */
+            display: block;  /* Removes inline spacing behaviors */
+            margin-top: -3px; /* Optical Adjustment: Lifts the emoji slightly to exact visual center */
             animation: pulse 1.5s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
         }
 
         .loading-text {
