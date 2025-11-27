@@ -949,7 +949,8 @@
 
                 // --- HISTORY TRACKING START ---
                 // Only track additions made via the main input
-                if (mode === 'update' && deltaAmount > 0 && !isRemoval) {
+                // MODIFIED: Now tracks history for 'generate' mode too, ensuring the input is saved as an update
+                if ((mode === 'update' || mode === 'generate') && deltaAmount > 0 && !isRemoval) {
                     // Add date string to handle day resets
                     additionHistory.push({ amount: deltaAmount, timestamp: timeStr, dateStr: now.toDateString() });
                     try {
@@ -1010,21 +1011,23 @@
                 // Construct the message
                 let msg = `Current Intake: ${currentTotal} ml`;
                 if (pendingInput > 0) {
-                    msg += `\n+ Pending Input: ${pendingInput} ml\n----------------\nNew Total: ${projectedTotal} ml`;
+                    msg += `\n+ Adding: ${pendingInput} ml\n----------------\nNew Total: ${projectedTotal} ml`;
+                } else {
+                    msg += `\n\n(No new amount entered)`;
                 }
-                msg += `\n\nGenerate report with this data?`;
+                msg += `\n\nUpdate data & Generate report?`;
 
                 tg.showPopup({
-                    title: 'Confirm Generation',
+                    title: 'Confirm & Generate',
                     message: msg,
                     buttons: [
-                        {id: 'gen', type: 'default', text: '✅ Yes, Generate'},
+                        {id: 'gen', type: 'default', text: '✅ Update & Generate'},
                         {id: 'cancel', type: 'cancel'}
                     ]
                 }, (btnId) => {
                     if (btnId === 'gen') {
-                        // If there was pending input, submitData will handle the addition + generation
-                        // If input was empty, it submits 0 addition + generation
+                        // submitData now handles history tracking for 'generate' mode too (see Modification 1)
+                        // This ensures the input is added, saved to history, settings applied, AND report generated.
                         submitData('generate');
                     }
                 });
