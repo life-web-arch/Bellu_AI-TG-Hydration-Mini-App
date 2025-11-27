@@ -475,6 +475,75 @@
             text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
             letter-spacing: 2px;
         }
+        /* --- NEW: Loading Overlay Styles --- */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 2000; /* Above everything */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .status-icon-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid rgba(6, 182, 212, 0.1);
+            border-top: 4px solid #06b6d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner-core {
+            font-size: 32px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .loading-text {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: #94a3b8;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
     </style>
 </head>
 <body>
@@ -593,6 +662,15 @@
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
     
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
+    <!-- ★★★ NEW: Full Screen Loading/Status Overlay ★★★ -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="status-icon-container">
+            <div class="spinner-ring"></div>
+            <div class="spinner-core">🌊</div>
+        </div>
+        <div class="loading-text" id="loadingTitle">PROCESSING</div>
+        <div class="loading-subtext" id="loadingMsg">Syncing with Bellu AI...</div>
+    </div>
     
     <script>
     
@@ -664,6 +742,23 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+            // --- NEW: Helper to show visual status ---
+            function showLoadingState(title, message, isSuccess = false) {
+                const overlay = document.getElementById('loadingOverlay');
+                const titleEl = document.getElementById('loadingTitle');
+                const msgEl = document.getElementById('loadingMsg');
+                
+                if (title) titleEl.innerText = title;
+                if (message) msgEl.innerText = message;
+                
+                overlay.classList.add('active');
+                
+                if (isSuccess) {
+                    document.querySelector('.spinner-ring').style.borderColor = '#10b981'; // Green
+                    document.querySelector('.spinner-ring').style.borderTopColor = '#10b981';
+                    document.querySelector('.spinner-core').innerText = '✅';
+                }
+            }
 
             // --- FIX: Expose Close Function Globally ---
             window.closeMiniApp = function() {
@@ -809,6 +904,24 @@
                         updateVisuals(currentTotal);
                     } else {
                         updateVisuals(0); // Default to 0 if no valid data.
+                    }
+                    // --- NEW: Visual cues for Start of Day / Reset ---
+                    // If intake is exactly 0, it implies a new day or manual reset.
+                    if (numericIntake === 0) {
+                        // Set title header to indicate new tracking cycle
+                        const dateHeader = document.getElementById('reportDateHeader');
+                        if(dateHeader) {
+                            dateHeader.innerText = "✨ NEW DAY : TRACKING STARTED";
+                            dateHeader.style.color = "#10b981"; // Green text
+                        }
+                        
+                        // Optional: Show a brief welcome toast via the overlay
+                        setTimeout(() => {
+                             // Only show if the user hasn't interacted yet
+                             if (!document.getElementById('loadingOverlay').classList.contains('active')) {
+                                 tg.HapticFeedback.notificationOccurred('success');
+                             }
+                        }, 500);
                     }
                 } catch (e) {
                     console.error("Failed to parse initial data:", e);
@@ -978,23 +1091,31 @@
                     }
                 };
 
-                // Send data to Bot
-                tg.sendData(JSON.stringify(payload));
+                // --- NEW: VISUAL FEEDBACK LOGIC ---
                 
-                if (mode === 'update') {
-                    // Update Only: Keep app open briefly with status
+                if (mode === 'generate') {
+                    // 1. Show the Full Screen Overlay immediately
+                    showLoadingState('GENERATING REPORT', 'Analyzing Intake & Creating Charts...', false);
+                    
+                    // 2. Small delay to allow the user to see the "Generating" state
+                    // This creates a smooth transition feeling before the app closes
+                    setTimeout(() => {
+                        // Change icon to success just before sending
+                        showLoadingState('SENT!', 'Check your chat for the report.', true);
+                        
+                        setTimeout(() => {
+                             tg.sendData(JSON.stringify(payload));
+                             // Allow a tiny fraction of a second for Telegram to register data before closing
+                             setTimeout(() => { tg.close(); }, 50); 
+                        }, 800); // Wait 0.8s showing the success state
+                    }, 1500); // Show "Generating" for 1.5s
+                    
+                } else {
+                    // Update Mode: Use standard popup or quick overlay
+                    tg.sendData(JSON.stringify(payload));
+                    
                     let msg = (deltaAmount === 0) ? "Configuration saved." : `${deltaAmount}ml processed.`;
                     tg.showPopup({ title: actionTypeStr, message: msg });
-                } else {
-                    // [MODIFICATION] Generate Now: Show Status Popup before closing
-                    // This gives the user feedback that the request was sent successfully
-                    tg.showPopup({ 
-                        title: '🚀 Generating...', 
-                        message: 'Data sent to Bellu AI.\nGenerating report in chat...' 
-                    }, function() {
-                        // Close after user acknowledges or automatically
-                        tg.close();
-                    });
                 }
             };
             
@@ -1043,5 +1164,6 @@
     </script>
 </body>
 </html>
+
 
 
