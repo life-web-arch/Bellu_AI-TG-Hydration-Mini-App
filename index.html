@@ -900,8 +900,6 @@
             // --- 5. Submit Data Logic (REVISED & FIXED) ---
             window.submitData = function(mode, isRemoval = false, specificAmount = 0, specificType = null) {
                 // Determine the amount being processed
-                // If it's a removal (Undo/Custom), use specificAmount passed from that function
-                // If it's an addition (Generate/Update button), read from Input
                 const amountFromInput = parseInt(input.value) || 0;
                 const deltaAmount = isRemoval ? specificAmount : amountFromInput;
                 
@@ -918,27 +916,20 @@
                 const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 // --- CALCULATION LOGIC ---
-                // We calculate the newTotal based on the GLOBAL currentTotal
                 let newTotal = currentTotal;
                 
                 if (isRemoval) {
-                    // Subtract logic
                     newTotal = Math.max(0, currentTotal - deltaAmount);
                 } else {
-                    // Add logic
                     newTotal = currentTotal + deltaAmount;
                 }
                 
-                // --- MODIFICATION: Allow 0 input for Setting Updates or Generation ---
-                // We only block if the input is negative (invalid) and it's not a specific removal action.
-                // If deltaAmount is 0, we proceed (assuming user wants to save settings or generate report).
                 if (deltaAmount < 0 && !isRemoval) {
                     tg.HapticFeedback.notificationOccurred('error');
                     tg.showPopup({ title: 'Invalid Amount', message: 'Amount cannot be negative.' });
                     return;
                 }
 
-                // Adjust Action String if amount is 0 (Just updating settings/Generating)
                 if (deltaAmount === 0 && !isRemoval) {
                      if (mode === 'generate') {
                          actionTypeStr = "Generating";
@@ -947,20 +938,23 @@
                      }
                 }
 
-                // --- HISTORY TRACKING START ---
-                // Only track additions made via the main input
-                // MODIFIED: Now tracks history for 'generate' mode too, ensuring the input is saved as an update
+                // --- HISTORY TRACKING ---
                 if ((mode === 'update' || mode === 'generate') && deltaAmount > 0 && !isRemoval) {
-                    // Add date string to handle day resets
+                    // [MODIFICATION] Clear history if the stored date is not today (Client-side Reset Check)
+                    if (additionHistory.length > 0) {
+                        const lastEntryDate = additionHistory[additionHistory.length - 1].dateStr;
+                        if (lastEntryDate !== now.toDateString()) {
+                            additionHistory = []; // Reset array
+                        }
+                    }
+                    
                     additionHistory.push({ amount: deltaAmount, timestamp: timeStr, dateStr: now.toDateString() });
                     try {
                         localStorage.setItem('hydrationHistory', JSON.stringify(additionHistory));
                     } catch (e) { console.error("Storage failed", e); }
                 }
-                // --- HISTORY TRACKING END ---
 
                 // --- UPDATE GLOBAL STATE AND VISUALS ---
-                // This is the single source of truth update
                 currentTotal = newTotal;
                 input.value = ''; // Clear input field
                 updateVisuals(currentTotal); // Update water animation
@@ -971,9 +965,9 @@
 
                 const payload = {
                     action: actionKey,
-                    intake_ml: newTotal,         // The correctly calculated total
-                    delta_ml: deltaAmount,       // The amount changed (added or removed)
-                    action_type: actionTypeStr,  // "Added", "Undo", or "Removed"
+                    intake_ml: newTotal,         
+                    delta_ml: deltaAmount,       
+                    action_type: actionTypeStr,  
                     timestamp: timeStr,
                     config: {
                         bitanu: document.getElementById('tgBit').checked,
@@ -984,17 +978,23 @@
                     }
                 };
 
+                // Send data to Bot
                 tg.sendData(JSON.stringify(payload));
                 
                 if (mode === 'update') {
-                    // Show a subtle confirmation.
+                    // Update Only: Keep app open briefly with status
                     let msg = (deltaAmount === 0) ? "Configuration saved." : `${deltaAmount}ml processed.`;
                     tg.showPopup({ title: actionTypeStr, message: msg });
-
                 } else {
-                    setTimeout(() => {
+                    // [MODIFICATION] Generate Now: Show Status Popup before closing
+                    // This gives the user feedback that the request was sent successfully
+                    tg.showPopup({ 
+                        title: '🚀 Generating...', 
+                        message: 'Data sent to Bellu AI.\nGenerating report in chat...' 
+                    }, function() {
+                        // Close after user acknowledges or automatically
                         tg.close();
-                    }, 500);
+                    });
                 }
             };
             
