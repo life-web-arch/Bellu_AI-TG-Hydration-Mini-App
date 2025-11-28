@@ -119,7 +119,7 @@
         .partner-badge {
             position: absolute;
             /* Adjusted position: Closer to the circle */
-            top: -25px;       
+            top: 25px;       
             right: -70px;     
             
             background: rgba(15, 23, 42, 0.6);
@@ -1060,20 +1060,6 @@
                     const testBadge = document.getElementById('partnerBadge');
                     const testLabel = document.getElementById('pName');
                     const testVal = document.getElementById('pVal');
-
-                    // Only run if the URL didn't already trigger it
-                    if (testBadge && !testBadge.classList.contains('visible')) {
-                        if(testLabel) testLabel.innerText = "TEST";
-                        if(testVal) testVal.innerText = "2150";
-                        
-                        // Add class with delay to show animation
-                        setTimeout(() => {
-                            testBadge.classList.add('visible');
-                        }, 500);
-                    }
-                    // ★★★ END TESTING BLOCK ★★★
-
-
 
                     
                     // ---: Restore Toggle States from URL ---
