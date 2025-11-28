@@ -578,10 +578,68 @@
                 opacity: 0.8; 
             }
         }
+        /* ---Partner Indicator Styles --- */
+        .partner-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end; /* Right align text */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 50; /* Ensure it stays above the waves */
+            transition: transform 0.2s ease;
+        }
+
+        .partner-badge:active {
+            transform: scale(0.95);
+        }
+
+        .partner-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .partner-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent); /* Cyan color */
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+        }
+        
+        .partner-unit {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
+
     <div id="reportDateHeader" class="top-date-label">NEXT REPORT : -- ---</div>
+
+    <!-- ★★★ Partner Indicator Container ★★★ -->
+    <!-- This sits relatively in the flow but positioned absolute via CSS -->
+    <div style="position: relative; width: 100%; max-width: 360px; height: 0;">
+        <div id="partnerBadge" class="partner-badge" style="display: none;">
+            <div id="pName" class="partner-label">PARTNER</div>
+            <div>
+                <span id="pVal" class="partner-value">0</span>
+                <span class="partner-unit">ml</span>
+            </div>
+        </div>
+    </div>
 
     <div class="circle-container">
         <!-- NEW: Fixed 2000ml Marker -->
@@ -904,7 +962,24 @@
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     
-                    // --- NEW: Restore Toggle States from URL ---
+                    // --- NEW: Partner Data Logic ---
+                    if (urlParams.has('p_val')) {
+                        const pVal = urlParams.get('p_val');
+                        const pName = urlParams.get('p_name') || "PARTNER";
+                        
+                        const badge = document.getElementById('partnerBadge');
+                        const label = document.getElementById('pName');
+                        const valDisplay = document.getElementById('pVal');
+                        
+                        if (badge && label && valDisplay) {
+                            label.innerText = pName;
+                            valDisplay.innerText = pVal;
+                            badge.style.display = 'flex'; // Show the badge
+                        }
+                    }
+
+                    
+                    // ---: Restore Toggle States from URL ---
                     // "1" means true (checked), "0" means false (unchecked)
                     if (urlParams.has('bitanu')) {
                         document.getElementById('tgBit').checked = (urlParams.get('bitanu') === '1');
