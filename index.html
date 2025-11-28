@@ -503,6 +503,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            
         }
 
         .loading-overlay.active {
@@ -528,6 +529,9 @@
             border-top: 4px solid #06b6d4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            left: 40.5px;
+            
+     
         }
 
         .spinner-core {
@@ -541,6 +545,7 @@
             
             /* Transform is now handled inside the keyframes to avoid conflict */
             animation: pulse 1.5s ease-in-out infinite;
+            
         }
 
         .loading-text {
@@ -768,7 +773,7 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
-            // --- NEW: Helper to show visual status ---
+            // --- Helper to show visual status ---
             function showLoadingState(title, message, isSuccess = false) {
                 const overlay = document.getElementById('loadingOverlay');
                 const titleEl = document.getElementById('loadingTitle');
@@ -785,10 +790,12 @@
                     document.querySelector('.spinner-core').innerText = '✅';
                 }
             }
+            // Since this forces the overlay to stay on forever (blocking clicks), you will need to remove or comment out that line // showLoadingState(...) once you are done testing the alignment.,showLoadingState('TESTING MODE', 'Verifying Emoji Alignment...', false);
 
-            // --- FIX: Expose Close Function Globally ---
+
+            // --- Expose Close Function Globally ---
             window.closeMiniApp = function() {
-                // Add simple haptic feedback for better UX
+                // simple haptic feedback for better UX
                 if(tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
                 }
@@ -1230,3 +1237,5 @@
     </script>
 </body>
 </html>
+
+
