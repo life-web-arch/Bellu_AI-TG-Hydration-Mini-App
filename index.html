@@ -905,7 +905,6 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     
                     // --- NEW: Restore Toggle States from URL ---
-                    // "1" means true (checked), "0" means false (unchecked)
                     if (urlParams.has('bitanu')) {
                         document.getElementById('tgBit').checked = (urlParams.get('bitanu') === '1');
                     }
@@ -929,21 +928,27 @@
                     // -------------------------------------------
 
                     const initialIntake = urlParams.get('intake');
-                    const numericIntake = parseInt(initialIntake);
+                    
+                    // ★★★ MODIFICATION START: Fix parsing to ensure NaN becomes 0 ★★★
+                    let numericIntake = parseInt(initialIntake);
 
-                    if (!isNaN(numericIntake) && numericIntake >= 0) {
-                        // Set the global state and update visuals.
-                        currentTotal = numericIntake;
-                        updateVisuals(currentTotal);
-                    } else {
-                        updateVisuals(0); // Default to 0 if no valid data.
+                    // Force numericIntake to 0 if it is NaN (missing param) or negative
+                    if (isNaN(numericIntake) || numericIntake < 0) {
+                        numericIntake = 0;
                     }
+
+                    // Set global state
+                    currentTotal = numericIntake;
+                    updateVisuals(currentTotal);
+                    // ★★★ MODIFICATION END ★★★
+
                     // --- NEW: Visual cues for Start of Day / Reset (Time-Window Based) ---
                     // Logic: Only show "NEW DAY" if intake is 0 AND time is between 00:15 AM and 12:15 PM.
                     
-                    const dateHeader = document.getElementById('reportDateHeader');
+                    // We re-fetch element here to be safe inside the try block scope
+                    const dateHeaderEl = document.getElementById('reportDateHeader');
                     
-                    if (numericIntake === 0 && dateHeader) {
+                    if (numericIntake === 0 && dateHeaderEl) {
                         const now = new Date();
                         
                         // Define Window Start: Today 00:15:00
@@ -957,17 +962,18 @@
                         // Check if we are currently within this 12-hour window
                         if (now >= windowStart && now < windowEnd) {
                             
-                            // Store the standard "NEXT REPORT" text (already calculated at top of script)
-                            const standardText = dateHeader.innerText;
+                            // Store the standard "NEXT REPORT" text
+                            const standardText = dateHeaderEl.innerText;
                             const newDayText = "✨ NEW DAY : TRACKING STARTED";
                             
                             // Immediately set to New Day text initially
-                            dateHeader.innerText = newDayText;
+                            dateHeaderEl.innerText = newDayText;
                             
                             // Haptic Feedback for the fresh start
                             setTimeout(() => {
-                                 if (!document.getElementById('loadingOverlay').classList.contains('active')) {
-                                     tg.HapticFeedback.notificationOccurred('success');
+                                 // Only trigger if overlay isn't blocking (prevents vibration loop on refresh)
+                                 if (document.getElementById('loadingOverlay') && !document.getElementById('loadingOverlay').classList.contains('active')) {
+                                     if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                                  }
                             }, 500);
 
@@ -977,30 +983,28 @@
                             // Function to swap text with opacity fade
                             setInterval(() => {
                                 // 1. Fade Out
-                                dateHeader.style.opacity = '0';
+                                dateHeaderEl.style.opacity = '0';
                                 
                                 setTimeout(() => {
                                     // 2. Swap Text
                                     if (showingNewDay) {
-                                        dateHeader.innerText = standardText;
+                                        dateHeaderEl.innerText = standardText;
                                     } else {
-                                        dateHeader.innerText = newDayText;
+                                        dateHeaderEl.innerText = newDayText;
                                     }
                                     showingNewDay = !showingNewDay;
                                     
                                     // 3. Fade In
-                                    dateHeader.style.opacity = '1';
+                                    dateHeaderEl.style.opacity = '1';
                                 }, 800); // Wait for fade out transition to finish (matches CSS 0.8s)
                                 
                             }, 5000); // Swap every 5 seconds
                         }
-                        // If outside window (e.g. 8 PM) but intake is 0, it stays as default "NEXT REPORT"
                     }
                 } catch (e) {
                     console.error("Failed to parse initial data:", e);
                     updateVisuals(0);
                 }
-            }
 
             // --- 4. Custom Remove Functionality ---
             window.removeCustomAmount = function() {
@@ -1237,5 +1241,6 @@
     </script>
 </body>
 </html>
+
 
 
