@@ -511,7 +511,7 @@
         }
 
         .status-icon-container {
-            position: relative;
+            position: relative; /* Essential anchor */
             width: 80px;
             height: 80px;
             margin-bottom: 25px;
@@ -531,11 +531,13 @@
         }
 
         .spinner-core {
-            position: relative; /* Changed from absolute to relative to respect Flexbox centering */
+            position: absolute;
+            top: 50%;
+            left: 50%;
             font-size: 35px;
             line-height: 1;
-            margin: 0;          /* Ensure no external margins affect centering */
-            padding: 0;         /* Removed the padding-top: 4px hack */
+            margin: 0;
+            padding: 0;
             z-index: 2;
             animation: pulse 1.5s ease-in-out infinite;
         }
@@ -558,14 +560,13 @@
         }
 
         /* Animations */
-        /* Updated Animation: Removed translate since we are now using Flexbox centering */
         @keyframes pulse {
             0%, 100% { 
-                transform: scale(1); 
+                transform: translate(-50%, -50%) scale(1); 
                 opacity: 1; 
             }
             50% { 
-                transform: scale(1.25); 
+                transform: translate(-50%, -50%) scale(1.25); 
                 opacity: 0.8; 
             }
         }
