@@ -511,7 +511,7 @@
         }
 
         .status-icon-container {
-            position: relative; /* Essential anchor */
+            position: relative;
             width: 80px;
             height: 80px;
             margin-bottom: 25px;
@@ -531,14 +531,15 @@
         }
 
         .spinner-core {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            font-size: 35px;
-            line-height: 1;
-            margin: 0;
-            padding: 0;
-            z-index: 2;
+            position: absolute; /* Detach from flow to overlay perfectly */
+            top: 50%;           /* Move to vertical middle */
+            left: 50%;          /* Move to horizontal middle */
+            font-size: 35px;    /* Slight increase for better visual balance */
+            line-height: 1;     /* Eliminate vertical font offset */
+            padding-top: 4px;   /* Micro-adjustment to fix Emoji baseline visual center */
+            z-index: 2;         /* Ensure it sits above the ring */
+            
+            /* Transform is now handled inside the keyframes to avoid conflict */
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -562,10 +563,12 @@
         /* Animations */
         @keyframes pulse {
             0%, 100% { 
+                /* Maintain centering while scaling */
                 transform: translate(-50%, -50%) scale(1); 
                 opacity: 1; 
             }
             50% { 
+                /* Maintain centering while scaling up */
                 transform: translate(-50%, -50%) scale(1.25); 
                 opacity: 0.8; 
             }
@@ -1227,4 +1230,3 @@
     </script>
 </body>
 </html>
-
