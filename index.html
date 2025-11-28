@@ -531,15 +531,12 @@
         }
 
         .spinner-core {
-            position: absolute; /* Detach from flow to overlay perfectly */
-            top: 50%;           /* Move to vertical middle */
-            left: 50%;          /* Move to horizontal middle */
-            font-size: 35px;    /* Slight increase for better visual balance */
-            line-height: 1;     /* Eliminate vertical font offset */
-            padding-top: 4px;   /* Micro-adjustment to fix Emoji baseline visual center */
-            z-index: 2;         /* Ensure it sits above the ring */
-            
-            /* Transform is now handled inside the keyframes to avoid conflict */
+            position: relative; /* Changed from absolute to relative to respect Flexbox centering */
+            font-size: 35px;
+            line-height: 1;
+            margin: 0;          /* Ensure no external margins affect centering */
+            padding: 0;         /* Removed the padding-top: 4px hack */
+            z-index: 2;
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -561,15 +558,14 @@
         }
 
         /* Animations */
+        /* Updated Animation: Removed translate since we are now using Flexbox centering */
         @keyframes pulse {
             0%, 100% { 
-                /* Maintain centering while scaling */
-                transform: translate(-50%, -50%) scale(1); 
+                transform: scale(1); 
                 opacity: 1; 
             }
             50% { 
-                /* Maintain centering while scaling up */
-                transform: translate(-50%, -50%) scale(1.25); 
+                transform: scale(1.25); 
                 opacity: 0.8; 
             }
         }
