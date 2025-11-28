@@ -75,18 +75,113 @@
             100% { background-position: 200% 50%; }
         }
 
-        /* --- Water Circle Animation --- */
-        .circle-container {
+        /* --- NEW: Gauge Wrapper to hold Circle + Partner Badge together --- */
+        .gauge-wrapper {
             position: relative;
             width: 200px;
             height: 200px;
-            margin: 20px 0 35px 0;
+            margin: 20px auto 35px auto; /* Centers the whole assembly */
+            z-index: 5;
+        }
+
+        /* --- MODIFIED: Circle Container (Remove margins, let wrapper handle layout) --- */
+        .circle-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0; /* RESET MARGINS - Wrapper handles centering now */
             border-radius: 50%;
             border: 4px solid var(--card-bg);
             box-shadow: 0 0 40px var(--accent-glow), inset 0 0 20px rgba(0,0,0,0.5);
             overflow: hidden;
             background: #020617;
             transform: translateZ(0);
+        }
+
+        /* --- MODIFIED: Partner Badge (Satellite Position) --- */
+        .partner-badge {
+            position: absolute;
+            /* Position relative to the 200x200 wrapper */
+            top: -10px;       
+            right: -85px;     
+            
+            background: rgba(15, 23, 42, 0.6); /* More transparent */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(6, 182, 212, 0.3); /* Cyan border */
+            border-left: 3px solid var(--accent); /* Accent bar on left */
+            
+            border-radius: 12px;
+            padding: 8px 12px;
+            min-width: 90px;
+            
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Align text left */
+            justify-content: center;
+            
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            z-index: 50;
+            
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; /* Hidden by default, JS toggles this */
+            transform: translateX(-10px); /* Start slightly off for animation */
+        }
+        
+        /* Animation class for when it appears */
+        .partner-badge.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .partner-label {
+            font-size: 9px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .partner-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+            line-height: 1;
+        }
+        
+        .partner-unit {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-left: 2px;
+        }
+        
+        /* Optional: A connector line to the main circle */
+        .partner-badge::before {
+            content: '';
+            position: absolute;
+            left: -18px;
+            top: 50%;
+            width: 18px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.5));
+            z-index: -1;
+        }
+        
+        .partner-badge::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--accent);
         }
 
         .wave {
@@ -578,82 +673,42 @@
                 opacity: 0.8; 
             }
         }
-        /* ---Partner Indicator Styles --- */
-        .partner-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 8px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end; /* Right align text */
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            z-index: 50; /* Ensure it stays above the waves */
-            transition: transform 0.2s ease;
-        }
 
-        .partner-badge:active {
-            transform: scale(0.95);
-        }
 
-        .partner-label {
-            font-size: 10px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 700;
-            margin-bottom: 2px;
-        }
-
-        .partner-value {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--accent); /* Cyan color */
-            text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
-        }
-        
-        .partner-unit {
-            font-size: 10px;
-            color: #94a3b8;
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
 
     <div id="reportDateHeader" class="top-date-label">NEXT REPORT : -- ---</div>
 
-    <!-- ★★★ Partner Indicator Container ★★★ -->
-    <!-- This sits relatively in the flow but positioned absolute via CSS -->
-    <div style="position: relative; width: 100%; max-width: 360px; height: 0;">
-        <div id="partnerBadge" class="partner-badge" style="display: none;">
+    <!-- ★★★ MODIFIED: Unified Gauge Wrapper ★★★ -->
+    <div class="gauge-wrapper">
+        
+        <!-- Partner Badge (Satellite) -->
+        <div id="partnerBadge" class="partner-badge">
             <div id="pName" class="partner-label">PARTNER</div>
             <div>
                 <span id="pVal" class="partner-value">0</span>
                 <span class="partner-unit">ml</span>
             </div>
         </div>
-    </div>
 
-    <div class="circle-container">
-        <!-- NEW: Fixed 2000ml Marker -->
-        <div class="wave wave-marker"></div>
-        
-
-        <div class="wave wave-back" id="waveBack"></div>
-        <div class="wave wave-front" id="waveFront"></div>
-        
-        <div class="overlay-text">
-            <h1 id="displayVal">0</h1>
-            <span>ML</span>
+        <!-- Main Water Circle -->
+        <div class="circle-container">
+            <!-- NEW: Fixed 2000ml Marker -->
+            <div class="wave wave-marker"></div>
+            
+            <div class="wave wave-back" id="waveBack"></div>
+            <div class="wave wave-front" id="waveFront"></div>
+            
+            <div class="overlay-text">
+                <h1 id="displayVal">0</h1>
+                <span>ML</span>
+            </div>
         </div>
+        
     </div>
+
 
     <div class="glass-card">
         <div class="input-wrapper">
@@ -962,7 +1017,7 @@
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     
-                    // --- NEW: Partner Data Logic ---
+                    // --- NEW: Partner Data Logic (Modified for new Visuals) ---
                     if (urlParams.has('p_val')) {
                         const pVal = urlParams.get('p_val');
                         const pName = urlParams.get('p_name') || "PARTNER";
@@ -974,9 +1029,15 @@
                         if (badge && label && valDisplay) {
                             label.innerText = pName;
                             valDisplay.innerText = pVal;
-                            badge.style.display = 'flex'; // Show the badge
+                            
+                            // Use classList for the CSS transition/animation
+                            // Small delay to allow layout to settle
+                            setTimeout(() => {
+                                badge.classList.add('visible');
+                            }, 100);
                         }
                     }
+                    // --- END NEW LOGIC ---
 
                     
                     // ---: Restore Toggle States from URL ---
@@ -1317,6 +1378,7 @@
     </script>
 </body>
 </html>
+
 
 
 
