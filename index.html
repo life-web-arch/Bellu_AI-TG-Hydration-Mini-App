@@ -40,6 +40,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            
+            /* --- MODIFIED: Ensure content stacks from top to prevent floating --- */
+            justify-content: flex-start; 
+            /* ------------------------------------------------------------------ */
+            
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             
@@ -72,6 +77,12 @@
             /* --- ADDED FOR ALTERNATING TEXT EFFECT --- */
             transition: opacity 0.8s ease-in-out;
             opacity: 1;
+
+            /* --- NEW: Center content perfectly inside the dynamic height box --- */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
         }
 
         /* Ensure this keyframes rule exists right after the class */
@@ -1106,6 +1117,22 @@
                             // Store the standard "NEXT REPORT" text
                             const standardText = dateHeader.innerText;
                             const newDayText = "✨ NEW DAY : TRACKING STARTED";
+                            
+                            // ★★★ START SMART HEIGHT CALCULATION ★★★
+                            // 1. Measure height of the standard text
+                            const heightStandard = dateHeader.offsetHeight;
+
+                            // 2. Temporarily swap to the longer text to measure its potential wrapped height
+                            dateHeader.innerText = newDayText;
+                            const heightNewDay = dateHeader.offsetHeight;
+
+                            // 3. Apply the MAXIMUM of the two heights to the element
+                            // This reserves the "stretch space" permanently so it never jumps
+                            dateHeader.style.height = Math.max(heightStandard, heightNewDay) + 'px';
+
+                            // 4. Reset text back to standard to start the animation cycle correctly
+                            dateHeader.innerText = standardText;
+                            // ★★★ END SMART HEIGHT CALCULATION ★★★
                             
                             // Immediately set to New Day text initially
                             dateHeader.innerText = newDayText;
