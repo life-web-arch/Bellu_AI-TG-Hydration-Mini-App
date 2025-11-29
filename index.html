@@ -1121,12 +1121,21 @@
             return `${d}-${m}`;
         };
 
-        const now = new Date();
-        const todayStr = formatDateKey(now); // e.g. "29-Nov"
-        
-        const yest = new Date(now);
-        yest.setDate(yest.getDate() - 1);
-        const yestStr = formatDateKey(yest); // e.g. "28-Nov"
+        // Date helpers (Fixed for Zero-Padding)
+            const now = new Date();
+            
+            // Helper to ensure "05-Nov" format matches Python
+            const fmtDate = (d) => {
+                const day = d.getDate().toString().padStart(2, '0'); // Adds '0' if single digit
+                const mon = d.toLocaleString('en-US', { month: 'short' });
+                return `${day}-${mon}`;
+            };
+
+            const todayStr = fmtDate(now);
+            
+            const yestDate = new Date(now); 
+            yestDate.setDate(now.getDate() - 1);
+            const yestStr = fmtDate(yestDate);
 
         // Filter Data
         const filtered = activityLogs.filter(log => {
@@ -1816,4 +1825,9 @@
     </script>
 </body>
 </html>
+
+
+
+
+
 
