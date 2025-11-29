@@ -119,7 +119,7 @@
         .partner-badge {
             position: absolute;
             /* Adjusted position: Closer to the circle */
-            top: -15px;       
+            top: 10px;       
             right: -70px;     
             
             background: rgba(15, 23, 42, 0.6);
@@ -691,6 +691,144 @@
             }
         }
 
+        /* --- [START NEW CSS FOR TABS] --- */
+        body {
+            padding-bottom: 90px; /* Make space for bottom nav */
+        }
+
+        /* Views */
+        .view-section {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.3s ease;
+        }
+        .view-section.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #64748b;
+            font-size: 10px;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 25%;
+        }
+
+        .nav-item.active {
+            color: #06b6d4;
+            transform: translateY(-2px);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        /* Activity Logs */
+        .activity-filters {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .filter-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .filter-chip.active {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: #06b6d4;
+            color: white;
+        }
+
+        .activity-card {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .activity-card.add { border-color: #10b981; }
+        .activity-card.remove { border-color: #ef4444; }
+
+        .act-main { display: flex; flex-direction: column; }
+        .act-title { color: #fff; font-weight: 600; font-size: 14px; }
+        .act-sub { color: #94a3b8; font-size: 11px; margin-top: 2px; }
+        .act-time { color: #64748b; font-size: 10px; font-family: monospace; }
+
+        /* Graphs */
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .graph-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .graph-title { font-weight: 700; color: #fff; font-size: 14px; }
+        
+        .btn-mini {
+            background: rgba(6, 182, 212, 0.2);
+            color: #06b6d4;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        /* --- [END NEW CSS] --- */
 
     </style>
 </head>
@@ -698,130 +836,202 @@
 
     <div id="reportDateHeader" class="top-date-label">NEXT REPORT : -- ---</div>
 
-    <!-- ★★★ MODIFIED: Unified Gauge Wrapper ★★★ -->
-    <div class="gauge-wrapper">
+    <!-- ================= VIEW 1: HOME (Main Tracking) ================= -->
+    <div id="home-section" class="view-section active">
         
-        <!-- Partner Badge (Satellite) -->
-        <div id="partnerBadge" class="partner-badge">
-            <div id="pName" class="partner-label">PARTNER</div>
-            <div>
-                <span id="pVal" class="partner-value">0</span>
-                <span class="partner-unit">ml</span>
+        <!-- [EXISTING GAUGE COMPONENT] -->
+        <div class="gauge-wrapper">
+            <div id="partnerBadge" class="partner-badge">
+                <div id="pName" class="partner-label">PARTNER</div>
+                <div>
+                    <span id="pVal" class="partner-value">0</span>
+                    <span class="partner-unit">ml</span>
+                </div>
+            </div>
+            <div class="circle-container">
+                <div class="wave wave-marker"></div>
+                <div class="wave wave-back" id="waveBack"></div>
+                <div class="wave wave-front" id="waveFront"></div>
+                <div class="overlay-text">
+                    <h1 id="displayVal">0</h1>
+                    <span>ML</span>
+                </div>
             </div>
         </div>
 
-        <!-- Main Water Circle -->
-        <div class="circle-container">
-            <!-- NEW: Fixed 2000ml Marker -->
-            <div class="wave wave-marker"></div>
-            
-            <div class="wave wave-back" id="waveBack"></div>
-            <div class="wave wave-front" id="waveFront"></div>
-            
-            <div class="overlay-text">
-                <h1 id="displayVal">0</h1>
-                <span>ML</span>
+        <div class="glass-card">
+            <!-- [EXISTING INPUT WRAPPER] -->
+            <div class="input-wrapper">
+                <input type="number" id="intakeInput" placeholder="Enter amount to ADD" inputmode="numeric">
+                <button class="btn-remove" onclick="removeCustomAmount()">−</button>
             </div>
+
+            <!-- Home Actions -->
+            <div class="action-grid" style="margin-top: 10px;">
+                <button class="btn-update" onclick="submitData('update')">💾 Update</button>
+                <button class="btn-primary" onclick="confirmAndGenerate()">🚀 Generate</button>
+            </div>
+
+            <!-- Home Shortcuts -->
+            <div class="menu-grid" style="margin-top: 15px;">
+                <button class="btn-secondary" onclick="triggerAction('help')">❓ Help</button>
+                <button class="btn-secondary" onclick="triggerAction('get_scripts')">🐍 Scripts</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 15px; font-size: 11px; color: #64748b;">
+                Tap tabs below for Settings & History
+            </div>
+            
+            <button class="btn-close" onclick="closeMiniApp()">Close App</button>
         </div>
-        
     </div>
 
-
-    <div class="glass-card">
-        <div class="input-wrapper">
-            <input type="number" id="intakeInput" placeholder="Enter amount (e.g. 2500)" inputmode="numeric">
-            <!-- Custom Remove Button -->
-            <button class="btn-remove" onclick="removeCustomAmount()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; width:50px; height:56px; border-radius:16px; font-size:24px; font-weight:bold; cursor:pointer; flex-shrink:0;">−</button>
-        </div>
-
-        <!-- Deadline Info Section -->
-        <div class="info-box">
-            <div class="info-text">
-                🕒 Deadline for yesterday's entry: <span class="info-highlight">12:15 AM</span>.<br>
-                🤖 Auto-Report Generation: <span class="info-highlight">12:15 AM (Next Day)</span>.
-            </div>
-        </div>
-
-        <div class="section-header">
-            <span>Global Settings</span>
-            <div class="section-line"></div>
-        </div>
-
-        <div class="toggle-list">
-            <div class="toggle-item">
-                <span class="toggle-label">👱‍♂️ Googlo-Booglo's Report</span>
-                <label class="switch">
-                    <input type="checkbox" id="tgBit" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="toggle-item">
-                <span class="toggle-label">👩‍🦰 Bellu's Report</span>
-                <label class="switch">
-                    <input type="checkbox" id="tgShr" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="toggle-item">
-                <span class="toggle-label">📊 Head-To-Head Chart</span>
-                <label class="switch">
-                    <input type="checkbox" id="tgComp" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="toggle-item">
-                <span class="toggle-label">✨ AI Insights</span>
-                <label class="switch">
-                    <input type="checkbox" id="tgAI" checked>
-                    <span class="slider"></span>
-                </label>
+    <!-- ================= VIEW 2: SETTINGS (Configuration) ================= -->
+    <div id="settings-section" class="view-section">
+        <div class="glass-card">
+            <div class="section-header" style="margin-top:0;">
+                <span>⚙️ Configuration</span>
+                <div class="section-line"></div>
             </div>
             
-            <!-- NEW: Auto-Report Toggle -->
-            <div class="toggle-item">
-                <span class="toggle-label">🤖 Auto-Generate Report</span>
-                <label class="switch">
-                    <input type="checkbox" id="tgAuto" checked onchange="toggleTimerVisibility()">
-                    <span class="slider"></span>
-                </label>
+            <div class="info-box">
+                <div class="info-text">
+                    Toggle report sections below. Changes are applied when you click Save.
+                </div>
             </div>
-        </div> <!-- End of toggle-list -->
 
-        <!-- NEW: Aesthetic Countdown Timer -->
-        <div id="autoTimerBox" class="timer-container">
-            <div class="timer-info">
-                <span class="timer-label">Next Auto-Report</span>
-                <span class="timer-sublabel">Generating in:</span>
+            <!-- [EXISTING TOGGLES MOVED HERE] -->
+            <div class="toggle-list">
+                <div class="toggle-item">
+                    <span class="toggle-label">👱‍♂️ Googlo-Booglo</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tgBit" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span class="toggle-label">👩‍🦰 Bellu's Report</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tgShr" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span class="toggle-label">📊 Comparison</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tgComp" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span class="toggle-label">✨ AI Insights</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tgAI" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span class="toggle-label">🤖 Auto-Generate</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tgAuto" checked onchange="toggleTimerVisibility()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
-            <div class="timer-digits" id="countdownDisplay">--:--:--</div>
-        </div>
-        
 
-        <!-- Dual Buttons -->
-        <div class="action-grid">
-            <button class="btn-update" onclick="submitData('update')">
-                💾 Update Only
-            </button>
-            <button class="btn-primary" onclick="confirmAndGenerate()">
-                🚀 Generate Now
-            </button>
-        </div>
+            <!-- [EXISTING TIMER COMPONENT] -->
+            <div id="autoTimerBox" class="timer-container">
+                <div class="timer-info">
+                    <span class="timer-label">Next Auto-Report</span>
+                    <span class="timer-sublabel">Generating in:</span>
+                </div>
+                <div class="timer-digits" id="countdownDisplay">--:--:--</div>
+            </div>
 
-        <div class="section-header">
-            <span>Actions</span>
-            <div class="section-line"></div>
+            <!-- Settings Specific Actions -->
+            <div class="action-grid" style="margin-top: 20px;">
+                <button class="btn-update" onclick="submitData('update')">💾 Save Only</button>
+                <button class="btn-primary" onclick="confirmAndGenerate()">🚀 Save & Gen</button>
+            </div>
         </div>
+    </div>
 
-        <div class="menu-grid">
-            <button class="btn-secondary" onclick="triggerAction('help')">❓ Help</button>
-            <button class="btn-secondary" onclick="triggerAction('get_scripts')">🐍 Scripts</button>
+    <!-- ================= VIEW 3: ACTIVITY (New History View) ================= -->
+    <div id="activity-section" class="view-section">
+        <div class="glass-card" style="min-height: 400px; justify-content: flex-start;">
+            <div class="section-header" style="margin-top:0; margin-bottom:15px;">
+                <span>📜 Activity Log</span>
+                <div class="section-line"></div>
+            </div>
+
+            <!-- Filters -->
+            <div class="activity-filters">
+                <div class="filter-chip active" onclick="filterActivity(this, 'all')">All Users</div>
+                <div class="filter-chip" onclick="filterActivity(this, 'BITANU')">Bitanu</div>
+                <div class="filter-chip" onclick="filterActivity(this, 'SHREYA')">Shreya</div>
+            </div>
+            
+            <!-- List Container -->
+            <div id="activityList">
+                <div style="text-align:center; color:#64748b; padding:40px;">
+                    <span style="font-size:20px; display:block; margin-bottom:10px;">⏳</span>
+                    Waiting for data...
+                </div>
+            </div>
         </div>
-        
-        <button class="btn-close" onclick="closeMiniApp()">Close</button>
+    </div>
+
+    <!-- ================= VIEW 4: GRAPH (New Charts View) ================= -->
+    <div id="graph-section" class="view-section">
+        <div class="glass-card">
+            <div class="section-header" style="margin-top:0; margin-bottom:15px;">
+                <span>📈 7-Day Trend</span>
+                <div class="section-line"></div>
+            </div>
+            
+            <!-- Graph 1: Bitanu -->
+            <div class="graph-header">
+                <span class="graph-title">👱‍♂️ Bitanu</span>
+                <!-- Calls existing logic to refresh data -->
+                <button class="btn-mini" onclick="window.location.reload()">Refresh</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartBitanu"></canvas>
+            </div>
+
+            <!-- Graph 2: Shreya -->
+            <div class="graph-header">
+                <span class="graph-title">👩‍🦰 Shreya</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartShreya"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BOTTOM NAVIGATION BAR ================= -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('home', this)">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('settings', this)">
+            <span class="nav-icon">⚙️</span>
+            <span>Config</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('activity', this)">
+            <span class="nav-icon">📜</span>
+            <span>History</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('graph', this)">
+            <span class="nav-icon">📈</span>
+            <span>Trends</span>
+        </div>
     </div>
 
     <!-- UPDATED: Use a newer API version to ensure Menu Button compatibility -->
     <script src="https://telegram.org/js/telegram-web-app.js?7.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- ★★★ NEW: Full Screen Loading/Status Overlay ★★★ -->
     <div id="loadingOverlay" class="loading-overlay">
@@ -834,6 +1044,196 @@
     </div>
     
     <script>
+    // --- [NEW: TABS & DATA LOGIC] ---
+    
+    // Global Data Holders
+    let historyData = { "BITANU": {}, "SHREYA": {} };
+    let activityLogs = [];
+    let chartB_inst = null;
+    let chartS_inst = null;
+    
+    // 1. Tab Switching Logic
+    window.switchTab = function(viewName, el) {
+        // Haptic Feedback
+        if(window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.selectionChanged();
+        }
+
+        // Update UI
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+
+        // Hide all views, Show target
+        document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+        document.getElementById(viewName + '-section').classList.add('active');
+        
+        // Re-render charts if entering graph view to fix canvas sizing issues
+        if (viewName === 'graph') {
+            setTimeout(renderCharts, 50);
+        }
+    };
+
+    // 2. Data Parsing Logic (Expects Base64 JSON in URL param 'h_data')
+    window.parseHydrationData = function(encodedStr) {
+        try {
+            if (!encodedStr) return;
+            // Base64 Decode -> JSON Parse
+            // Fix standard Base64 string if coming from URL (replace -_ with +/)
+            let base64 = encodedStr.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonStr = atob(base64);
+            const data = JSON.parse(jsonStr);
+            
+            if (data.history) historyData = data.history;
+            if (data.activities) activityLogs = data.activities;
+            
+            console.log("Data loaded:", data);
+            
+            // Render immediately
+            renderActivityList();
+            renderCharts();
+        } catch (e) {
+            console.error("Failed to parse history data", e);
+            document.getElementById('activityList').innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Error loading data</div>';
+        }
+    };
+
+    // 3. Activity Rendering Logic
+    let filterU = 'all';
+
+    window.filterActivity = function(el, val) {
+        // Visual toggle
+        el.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        
+        filterU = val;
+        renderActivityList();
+    };
+
+    function renderActivityList() {
+        const container = document.getElementById('activityList');
+        if(!container) return;
+        container.innerHTML = '';
+
+        // Helper to format JS Date to "DD-Mon" (e.g., "29-Nov") to match Python output
+        const formatDateKey = (date) => {
+            const d = date.getDate().toString().padStart(2, '0');
+            const m = date.toLocaleString('default', { month: 'short' });
+            return `${d}-${m}`;
+        };
+
+        const now = new Date();
+        const todayStr = formatDateKey(now); // e.g. "29-Nov"
+        
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = formatDateKey(yest); // e.g. "28-Nov"
+
+        // Filter Data
+        const filtered = activityLogs.filter(log => {
+            // 1. User Filter
+            if (filterU !== 'all' && log.u.toUpperCase() !== filterU.toUpperCase()) return false;
+            
+            // 2. Date Filter Logic (FIXED)
+            // Python sends format: "29-Nov 14:30"
+            if (filterD === 'today') {
+                if (!log.t.startsWith(todayStr)) return false;
+            } else if (filterD === 'yesterday') {
+                if (!log.t.startsWith(yestStr)) return false;
+            }
+            
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No records found.</div>';
+            return;
+        }
+
+        // Generate HTML (Existing Code)
+        filtered.forEach(log => {
+            let borderClass = 'update'; 
+            if (log.a.includes('Added')) borderClass = 'add';
+            if (log.a.includes('Removed') || log.a.includes('Undo')) borderClass = 'remove';
+
+            const html = `
+            <div class="activity-card ${borderClass}">
+                <div class="act-main">
+                    <span class="act-title">${log.u}</span>
+                    <span class="act-sub">${log.a} (${log.d})</span>
+                </div>
+                <span class="act-time">${log.t}</span>
+            </div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    // 4. Chart Rendering Logic
+    function renderCharts() {
+        const cvsB = document.getElementById('chartBitanu');
+        const cvsS = document.getElementById('chartShreya');
+        
+        if (!cvsB || !cvsS) return; // Safety check
+
+        // Destroy old instances if exist
+        if (chartB_inst) chartB_inst.destroy();
+        if (chartS_inst) chartS_inst.destroy();
+
+        chartB_inst = createChart(cvsB.getContext('2d'), historyData.BITANU, 'Bitanu', '#06b6d4');
+        chartS_inst = createChart(cvsS.getContext('2d'), historyData.SHREYA, 'Shreya', '#e879f9');
+    }
+
+    function createChart(ctx, dataObj, label, color) {
+        // Sort dates (Keys are YYYY-MM-DD)
+        const sortedDates = Object.keys(dataObj || {}).sort();
+        // Take last 7 days
+        const recentDates = sortedDates.slice(-7);
+        const values = recentDates.map(d => dataObj[d]);
+        
+        // Format labels: 2025-11-29 -> 29/11
+        const labels = recentDates.map(d => {
+            const parts = d.split('-');
+            return `${parts[2]}/${parts[1]}`;
+        });
+
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: values,
+                    borderColor: color,
+                    backgroundColor: color + '20', // Add transparency hex
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointBackgroundColor: '#1e293b',
+                    pointBorderColor: color,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b8', font: {size: 10} }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: {size: 10} }
+                    }
+                }
+            }
+        });
+    }
     
         // --- NEW: Global Timer Variables ---
     let reportTimerInterval = null;
@@ -1416,5 +1816,4 @@
     </script>
 </body>
 </html>
-
 
