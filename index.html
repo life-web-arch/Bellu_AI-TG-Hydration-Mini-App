@@ -993,7 +993,8 @@
             <div class="graph-header">
                 <span class="graph-title">🙋🏻‍♂️ Googloo-Boogloo</span>
                 <!-- Calls existing logic to refresh data -->
-                <button class="btn-mini" onclick="window.location.reload()">Refresh</button>
+                <!-- Trigger a backend refresh action -->
+                <button class="btn-mini" onclick="triggerAction('refresh_data')">Refresh Data</button>
             </div>
             <div class="chart-container">
                 <canvas id="chartBitanu"></canvas>
@@ -1494,6 +1495,17 @@
                     // Initialize Timer Visibility based on restored state
                     toggleTimerVisibility();
                     // -------------------------------------------
+                    
+                    
+                  
+                    // ★★★ MODIFICATION START: Parse Graph/History Data on Load ★★★
+                    if (urlParams.has('h_data')) {
+                        console.log("Found h_data param, parsing...");
+                        window.parseHydrationData(urlParams.get('h_data'));
+                    } else {
+                        console.warn("No h_data found in URL parameters.");
+                    }
+                    // ★★★ MODIFICATION END ★★★
 
                     const initialIntake = urlParams.get('intake');
                     
@@ -1883,6 +1895,7 @@
     </script>
 </body>
 </html>
+
 
 
 
