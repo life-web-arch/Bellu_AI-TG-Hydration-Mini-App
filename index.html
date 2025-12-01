@@ -1503,6 +1503,27 @@
                         numericIntake = 0;
                     }
 
+                    // ★★★ MODIFICATION START: CLIENT-SIDE RESET SAFETY ★★★
+                    // If the user opens an OLD link (intake > 0) but it is clearly a NEW DAY compared to stored history,
+                    // force a visual reset to 0 to avoid confusion.
+                    const now = new Date();
+                    try {
+                        if (additionHistory.length > 0 && numericIntake > 0) {
+                            const lastEntryDateStr = additionHistory[additionHistory.length - 1].dateStr;
+                            const todayStr = now.toDateString();
+                            
+                            // If history is from yesterday (or earlier) BUT URL still has value (Old Link), reset to 0.
+                            if (lastEntryDateStr !== todayStr) {
+                                console.log("Old link detected on new day. Forcing visual reset to 0.");
+                                numericIntake = 0;
+                                // Also clear local history since it's stale
+                                additionHistory = [];
+                                localStorage.removeItem('hydrationHistory');
+                            }
+                        }
+                    } catch (e) { console.error("Reset check failed", e); }
+                    // ★★★ MODIFICATION END ★★★
+
                     // Set the global state and update visuals
                     currentTotal = numericIntake;
                     updateVisuals(currentTotal);
