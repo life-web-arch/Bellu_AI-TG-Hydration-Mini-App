@@ -1801,10 +1801,44 @@
                 }
             };
             
-            // --- 6. New Confirmation Logic for Generate Button ---
+            // --- 6. New Confirmation Logic for Generate Button (MODIFIED) ---
             window.confirmAndGenerate = function() {
                 tg.HapticFeedback.impactOccurred('light');
 
+                // --- CHECK TOGGLES FIRST ---
+                const isBit = document.getElementById('tgBit').checked;
+                const isShr = document.getElementById('tgShr').checked;
+                const isComp = document.getElementById('tgComp').checked;
+                const isAI = document.getElementById('tgAI').checked;
+
+                // Validate: Ensure at least one actual report (not just AI/Auto) is selected
+                if (!isBit && !isShr && !isComp) {
+                    // 1. Automatically switch to the Settings tab
+                    // We target the 2nd nav item (index 1) which corresponds to Settings
+                    const settingsNavItem = document.querySelectorAll('.nav-item')[1];
+                    switchTab('settings', settingsNavItem);
+
+                    // 2. Alert the user
+                    tg.showPopup({
+                        title: 'No Reports Selected',
+                        message: 'You must enable at least one report type (Googlo, Bellu, or Head-To-Head) to perform a generation.\n\nPlease check the toggles.'
+                    });
+                    
+                    return; // Stop execution
+                }
+
+                // Build string list of what will be generated
+                let activeReports = [];
+                if (isBit) activeReports.push("• Googlo's Report");
+                if (isShr) activeReports.push("• Bellu's Report");
+                if (isComp) activeReports.push("• Head-To-Head Report");
+                
+                let reportSummary = activeReports.join('\n');
+                if (isAI) {
+                    reportSummary += "\n\n✨ Includes AI Insights";
+                }
+
+                // --- EXISTING INPUT LOGIC ---
                 // Check if user typed something in the input box but didn't hit update yet
                 const pendingInput = parseInt(input.value) || 0;
                 
@@ -1818,7 +1852,11 @@
                 } else {
                     msg += `\n\n(No new amount entered)`;
                 }
-                msg += `\n\nUpdate data & Generate report?`;
+
+                // Append the list of reports to be generated
+                msg += `\n\n📄 REPORTS TO GENERATE:\n${reportSummary}`;
+                
+                msg += `\n\nUpdate data & Generate?`;
 
                 tg.showPopup({
                     title: 'Confirm & Generate',
@@ -1829,8 +1867,7 @@
                     ]
                 }, (btnId) => {
                     if (btnId === 'gen') {
-                        // submitData now handles history tracking for 'generate' mode too (see Modification 1)
-                        // This ensures the input is added, saved to history, settings applied, AND report generated.
+                        // submitData handles history tracking, saving settings, and generating
                         submitData('generate');
                     }
                 });
