@@ -959,16 +959,29 @@
     <!-- ================= VIEW 3: ACTIVITY (New History View) ================= -->
     <div id="activity-section" class="view-section">
         <div class="glass-card" style="min-height: 400px; justify-content: flex-start;">
-            <div class="section-header" style="margin-top:0; margin-bottom:15px;">
-                <span>📜 Activity Log</span>
-                <div class="section-line"></div>
+            
+            <!-- MODIFIED HEADER: Added Flex layout for Title and Refresh Button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 15px;">
+                <div class="section-header" style="margin-top:0; margin-bottom:0; flex-grow:1;">
+                    <span>📜 Activity Log</span>
+                    <div class="section-line"></div>
+                </div>
+                <!-- NEW REFRESH BUTTON -->
+                <button class="btn-mini" style="margin-left: 10px; padding: 6px 12px; font-size: 11px;" onclick="triggerAction('refresh_data')">🔄 Refresh</button>
             </div>
 
-            <!-- Filters -->
+            <!-- User Filters -->
             <div class="activity-filters">
                 <div class="filter-chip active" onclick="filterActivity(this, 'all')">All Users</div>
                 <div class="filter-chip" onclick="filterActivity(this, 'BITANU')">Bitanu</div>
                 <div class="filter-chip" onclick="filterActivity(this, 'SHREYA')">Shreya</div>
+            </div>
+
+            <!-- NEW: Date Filters (To implement the date logic correctly) -->
+            <div class="activity-filters" style="margin-top: -5px;">
+                <div class="filter-chip active" onclick="filterDate(this, 'all')">Any Time</div>
+                <div class="filter-chip" onclick="filterDate(this, 'today')">Today</div>
+                <div class="filter-chip" onclick="filterDate(this, 'yesterday')">Yesterday</div>
             </div>
             
             <!-- List Container -->
@@ -1085,28 +1098,45 @@
             const data = JSON.parse(jsonStr);
             
             if (data.history) historyData = data.history;
-            if (data.activities) activityLogs = data.activities;
             
-            console.log("Data loaded:", data);
+            // Ensure we assign to the global activityLogs variable correctly
+            if (data.activities && Array.isArray(data.activities)) {
+                activityLogs = data.activities;
+            } else {
+                activityLogs = [];
+            }
             
-            // Render immediately
+            console.log("Data loaded successfully:", data);
+            
+            // Render immediately after parsing
             renderActivityList();
             renderCharts();
         } catch (e) {
             console.error("Failed to parse history data", e);
-            document.getElementById('activityList').innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Error loading data</div>';
+            document.getElementById('activityList').innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Error loading data (Corrupt)</div>';
         }
     };
 
     // 3. Activity Rendering Logic
     let filterU = 'all';
+    let filterD = 'all'; // NEW: Default to 'all' dates
 
     window.filterActivity = function(el, val) {
-        // Visual toggle
+        // Visual toggle for User chips
         el.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
         
         filterU = val;
+        renderActivityList();
+    };
+
+    // NEW: Function to handle Date filtering
+    window.filterDate = function(el, val) {
+        // Visual toggle for Date chips
+        el.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        
+        filterD = val;
         renderActivityList();
     };
 
@@ -1115,36 +1145,31 @@
         if(!container) return;
         container.innerHTML = '';
 
-        // Helper to format JS Date to "DD-Mon" (e.g., "29-Nov") to match Python output
-        const formatDateKey = (date) => {
-            const d = date.getDate().toString().padStart(2, '0');
-            const m = date.toLocaleString('default', { month: 'short' });
-            return `${d}-${m}`;
+        // 1. Date Calculation Logic (Correctly Implemented)
+        const now = new Date();
+        
+        // Helper to format date as "DD-Mon" (e.g., "01-Dec")
+        const fmtDate = (d) => {
+            const day = d.getDate().toString().padStart(2, '0');
+            const mon = d.toLocaleString('en-US', { month: 'short' });
+            return `${day}-${mon}`;
         };
 
-        // Date helpers (Fixed for Zero-Padding)
-            const now = new Date();
-            
-            // Helper to ensure "05-Nov" format matches Python
-            const fmtDate = (d) => {
-                const day = d.getDate().toString().padStart(2, '0'); // Adds '0' if single digit
-                const mon = d.toLocaleString('en-US', { month: 'short' });
-                return `${day}-${mon}`;
-            };
+        const todayStr = fmtDate(now); // e.g., "01-Dec"
+        
+        const yestDate = new Date(now); 
+        yestDate.setDate(now.getDate() - 1);
+        const yestStr = fmtDate(yestDate); // e.g., "30-Nov"
 
-            const todayStr = fmtDate(now);
-            
-            const yestDate = new Date(now); 
-            yestDate.setDate(now.getDate() - 1);
-            const yestStr = fmtDate(yestDate);
-
-        // Filter Data
+        // 2. Filter Data
         const filtered = activityLogs.filter(log => {
-            // 1. User Filter
-            if (filterU !== 'all' && log.u.toUpperCase() !== filterU.toUpperCase()) return false;
+            // A. User Filter
+            if (filterU !== 'all' && log.u.toUpperCase() !== filterU.toUpperCase()) {
+                return false;
+            }
             
-            // 2. Date Filter Logic (FIXED)
-            // Python sends format: "29-Nov 14:30"
+            // B. Date Filter Logic
+            // log.t format is usually "DD-Mon HH:MM" (e.g., "01-Dec 14:30")
             if (filterD === 'today') {
                 if (!log.t.startsWith(todayStr)) return false;
             } else if (filterD === 'yesterday') {
@@ -1155,15 +1180,18 @@
         });
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No records found.</div>';
+            container.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No records found for this selection.</div>';
             return;
         }
 
-        // Generate HTML (Existing Code)
+        // 3. Generate HTML
         filtered.forEach(log => {
             let borderClass = 'update'; 
-            if (log.a.includes('Added')) borderClass = 'add';
-            if (log.a.includes('Removed') || log.a.includes('Undo')) borderClass = 'remove';
+            // Safety check
+            const actionString = log.a || "";
+            
+            if (actionString.includes('Added')) borderClass = 'add';
+            if (actionString.includes('Removed') || actionString.includes('Undo')) borderClass = 'remove';
 
             const html = `
             <div class="activity-card ${borderClass}">
